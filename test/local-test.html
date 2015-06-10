@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+	
+	<script src="../../webcomponentsjs/webcomponents.min.js"></script>
+	<script src="../../web-component-tester/browser.js"></script>
+	
+	<!-- Elements to be tested -->
+	<link rel="import" href="../cbn-data-source.html">
+	
+</head>
+<body>
+
+<template is="auto-binding">
+	
+	<cbn-data-source id="datasource1" data='[
+		{ "key":"1", "value": "First" }, 
+		{ "key":"2", "value": "Second" }, 
+		{ "key":"3", "value": "Third" }]'></cbn-data-source>
+	
+	<cbn-data-source id="datasource2" filtermode="contains-ci" 
+					 data="{{testData2}}"></cbn-data-source>
+	
+</template>
+
+<script>
+	
+	var tpl;
+	var datasource1, datasource2;
+	
+	// Test Data:
+	var testData1 = [
+		{ "key":"1", "value": "First" }, 
+		{ "key":"2", "value": "Second" }, 
+		{ "key":"3", "value": "Third" }
+	];
+	
+	var testData2 = [
+		{ "key":"4", "value": "Four" },
+		{ "key":"5", "value": "Five" },
+		{ "key":"6", "value": "Six" },
+		{ "key":"7", "value": "Seven" }
+	];
+	
+	var test2ExpectedData = [
+		{ "key":"6", "value": "Six" },
+		{ "key":"7", "value": "Seven" }
+	];
+	
+	tpl = document.querySelector('template[is="auto-binding"]');
+	tpl.testData2 = testData2;
+	
+	// Test routines:
+	
+	// Set-up the test suite
+	suiteSetup(function(done){
+		// hack for poly-filled elements, need to re-fetch the proxied element
+		datasource1 = document.querySelector('#datasource1');
+		datasource2 = document.querySelector('#datasource2');
+		tpl = document.querySelector('template[is="auto-binding"]');
+		
+		// addEventListener with automatic cleanup at the end of a test
+		this._eventListeners = [];
+		this.addEventListener = function (obj, event, callback) {
+			obj.addEventListener(event, callback);
+			this._eventListeners.push( [ obj, event, callback ] );
+		};
+		
+		this.cleanupEventListeners = function() {
+			for (var i=0; i<this._eventListeners.length; i++) {
+				var listener = this._eventListeners[i];
+				var obj = listener[0], event = listener[1], callback = listener[2];
+				obj.removeEventListener(event, callback);
+			}
+			this._eventListeners = [];
+		};
+		
+		flush(done);
+	});
+	
+	setup(function(){
+		// nothing here
+	});
+	
+	teardown(function() {
+		this.cleanupEventListeners();
+	});
+	
+	test('no filtering', function(done) {
+		var queryHandler = sinon.spy();
+		var availableHandler = sinon.spy();
+		
+		this.addEventListener(datasource1, 'cbn-data-query', queryHandler);
+		this.addEventListener(datasource1, 'cbn-data-available', availableHandler);
+		
+		datasource1.query();
+		assert(queryHandler.called ,'cbn-data-query fired');
+		
+		flush(function() {
+			assert(availableHandler.called ,'cbn-data-available fired');
+			assert.deepEqual(datasource1.data, testData1, 'data 1');
+			done();
+		});
+	});
+	
+	test('local filtering (contains mode)', function(done) {
+		var queryHandler = sinon.spy();
+		var availableHandler = sinon.spy();
+		
+		this.addEventListener(datasource2, 'cbn-data-query', queryHandler);
+		this.addEventListener(datasource2, 'cbn-data-available', availableHandler);
+		
+		assert.equal(datasource2.filterMode, 'contains-ci', 'filter mode');
+		
+		datasource2.query('S');
+		assert(queryHandler.called ,'cbn-data-query fired');
+		
+		flush(function() {
+			assert(availableHandler.called ,'cbn-data-available fired');
+			assert.deepEqual(datasource2.data, testData2, 'data 2');
+			assert.deepEqual(datasource2.filteredData, test2ExpectedData, 'filtered data 2');
+			done();
+		});
+	});
+	
+</script>
+
+</body>
+</html>

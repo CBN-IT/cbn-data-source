@@ -1,0 +1,22 @@
+{
+    "name": "cbn-data-source",
+    "version": "0.1.0",
+    "description": "",
+    "main": "cbn-data-source.html",
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "../",
+        "Gruntfile.js",
+        "package.json",
+        "src"
+    ],
+    "dependencies": {
+        "polymer": "Polymer/polymer#^0.5",
+        "cbn-form": "git@bitbucket.org:cbn-it/cbn-form.git#master"
+    },
+    "devDependencies": {
+        "web-component-tester": "Polymer/web-component-tester"
+    }
+}

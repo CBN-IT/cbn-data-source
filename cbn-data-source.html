@@ -1,0 +1,341 @@
+<!--
+`cbn-data-source` is a non-visual element that can provide data to form inputs (such as auto-completed text, select 
+inputs etc.).
+
+There are several methods for providing data to the element:
+
+1. Use the data property to provide the data as a JSON array (using Polymer bindings).
+Example: 
+```
+<cbn-data-source id="datasource" data="[ { key: 1, value: 'one' } ]"></cbn-data-source>
+```
+
+2. Insert a `core-ajax` element as child; it will be used each time the query method is called.
+Example: 
+```
+<cbn-data-source id="datasource">
+	<core-ajax url="/get/data.json" handleAs="json"></core-ajax>
+</cbn-data-source>
+```
+
+3. Listen for the `cbn-data-query` event and setting the {@link #data} and/or (@link #filteredData) property.
+Example: 
+```
+this.$.datasource.addEventListener('cbn-data-query', function(event) {
+	var data = [];
+	// ... populate the data...
+	event.target.data = data;
+	// if you prevent the default action, make sure to fire a `cbn-data-available` event when the data is ready
+	event.preventDefault();
+	event.target.fire('cbn-data-available');
+});
+```
+
+You should only use 1 of the 3 methods enumerated above, otherwise the behavior is undefined.
+
+@group cbn-form
+@element cbn-data-source
+-->
+
+<!-- Imports -->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../core-ajax/core-ajax.html">
+
+<polymer-element name="cbn-data-source">
+	<template>
+		<content select="core-ajax"></content>
+	</template>
+	
+	<script>
+		(function() {
+			
+			Polymer('cbn-data-source', {
+				
+				publish: { // Published attributes: 
+					
+					/**
+					 * Provides external data to the data-source element.
+					 * If `core-ajax` is used, this will store/cache its results.
+					 * 
+					 * @type {Array}
+					 * @default []
+					 */
+					data: null, 
+					
+					/**
+					 * Returns the filtered data. 
+					 * You can use {@link #query} to specify the filtering query.
+					 * 
+					 * @type {Array}
+					 * @default []
+					 */
+					filteredData: null, 
+					
+					/**
+					 * Specify the property to filter a data item by.
+					 * Specify empty value if your data is a String list and you want to compare the items directly.
+					 * 
+					 * @type {String}
+					 * @default 'value'
+					 */
+					filterProperty: 'value', 
+					
+					/**
+					 * The local filtering mode to use. 
+					 * If this is active, the results are available at the {@link #filteredData} property.
+					 * 
+					 * Available modes: 
+					 * - '' (empty string): disable local filtering;
+					 * - 'exact': do an exact match (equals comparison);
+					 * - 'exact-ci': case-insensitive 'exact' matching;
+					 * - 'begins': check if the data item's value begins with the queried value;
+					 * - 'begins-ci': case-insensitive 'begins' matching;
+					 * - 'contains': check if the item's value contains the filtered value.
+					 * - 'contains-ci': case-insensitive 'contains' matching;
+					 * 
+					 * For custom filtering you can use the `cbn-data-query` event.
+					 * Note: if filtering is disabled, the {@link #data} property should be used instead of the 
+					 * {@link #filteredData} to access the results.
+					 * 
+					 * @type {String}
+					 * @default ''
+					 */
+					filterMode: '',
+					
+					/**
+					 * Specifies the parameter to use for specifying the query for the `core-ajax` request.
+					 * Set to empty string to disable specifying an AJAX parameter.
+					 * 
+					 * @type {String}
+					 * @default ''
+					 */
+					ajaxParameter: '',
+					
+					/**
+					 * The minimum interval between ajax queries (milliseconds). 
+					 * It is used better in conjunction with local filtering (and set this to the timeout after which to 
+					 * re-fetch the data from server).
+					 * 
+					 * Note: if this is set and both local filtering and `core-ajax` are used, the `cbn-data-available` 
+					 * will be fired regardless of whether a new request has been made or the locally cached data is used.
+					 * 
+					 * @type {Number}
+					 * @default 0
+					 */
+					ajaxInterval: 0
+					
+				}, 
+				
+				// Private properties
+				
+				/**
+				 * Caches the last query executed.
+				 */
+				_lastQuery: '',
+				
+				/**
+				 * Stores the time of the last request.
+				 */
+				_lastRequestTime: 0,
+				
+				/**
+				 * A map with functions to use for filtering.
+				 */
+				_filterModes: {
+					'exact': function(item, query) {
+						if (!item) return false;
+						return (item == query);
+					},
+					'exact-ci': function(item, query) {
+						if (!item) return false;
+						return (item.toLowerCase() == query.toLowerCase());
+					},
+					'begins': function(item, query) {
+						if (!item) return false;
+						return (item.indexOf(query) == 0);
+					},
+					'begins-ci': function(item, query) {
+						if (!item) return false;
+						return (item.toLowerCase().indexOf(query.toLowerCase()) == 0);
+					},
+					'contains': function(item, query) {
+						if (!item) return false;
+						return (item.indexOf(query) >= 0);
+					},
+					'contains-ci': function(item, query) {
+						if (!item) return false;
+						return (item.toLowerCase().indexOf(query.toLowerCase()) >= 0);
+					}
+				},
+				
+				
+				// Events: 
+				
+				/**
+				 * Emits an event to query for data.
+				 * 
+				 * The event details object has the 'query' member, which specifies the query that has been 
+				 * made on the data.
+				 * 
+				 * @event cbn-data-query
+				 */
+				
+				/**
+				 * Emits an event when new data is available. 
+				 * It is the follow-up event to the {@link #query} method.
+				 * 
+				 * If the data is manually specified, the event is synchronously fired whenever the element's data is 
+				 * changed.
+				 * For ajax requests, the event is fired after the server responds and the data is set to the response 
+				 * value.
+				 * 
+				 * @event cbn-data-available
+				 */
+				
+				// Public API methods:
+				
+				/**
+				 * Queries the element for (optionally, filtered) data.
+				 * The `cbn-data-available` event will be fired when the data is available.
+				 * 
+				 * @param {String} query The query value (to filter by).
+				 */
+				query: function(query) {
+					this._lastQuery = query;
+					
+					var ev = this.fire('cbn-data-query', {
+						query: query
+					}, null, false, true); // doesn't bubble, cancellable
+					if (ev.defaultPrevented) {
+						return;
+					}
+					
+					if (this._ajax) {
+						var curTime = (new Date()).getTime();
+						if ( !this._lastRequestTime || (curTime-this._lastRequestTime) >= this.ajaxInterval ) {
+							// too much time has passed, issue a new AJAX request
+							var xhr = this.ajaxReload(query);
+							xhr._isDataQuery = true;
+							xhr._dataQuery = query;
+							
+						} else {
+							// use the cached data and, optionally, filter the results
+							this._filter(query);
+						}
+						
+					} else {
+						this._filter(query);
+					}
+				},
+				
+				/**
+				 * Requests the `core-ajax` component to reload the data.
+				 */
+				ajaxReload: function(query) {
+					if (!this._ajax) 
+						return false;
+					this._ajax.abort();
+					
+					if (this.ajaxParameter) {
+						if (!this._ajax.params) 
+							this._ajax.params = {};
+						this._ajax.params[this.ajaxParameter] = query;
+					}
+					
+					this._lastRequestTime = (new Date()).getTime();
+					return this._ajax.go();
+				},
+				
+				// Internal methods:
+				
+				/**
+				 * Fires when the element is created. Used to initialize its attributes.
+				 */
+				created: function () {
+					if (!this.data) 
+						this.data = [];
+					if (!this.filteredData) 
+						this.filteredData = [];
+				},
+				
+				/**
+				 * Called when the element's light DOM children are fully accessible.
+				 */
+				domReady: function() {
+					this._initCoreAjax();
+				},
+				
+				/**
+				 * Called when the data property is changed.
+				 */
+				dataChanged: function() {
+					this.query(this._lastQuery);
+				},
+				
+				/**
+				 * Filters the data, returning only the items that pass the query condition.
+				 * The results are stored inside the {@link #filteredData} property.
+				 * 
+				 * @param {String} query The value to filter by.
+				 */
+				_filter: function(query) {
+					try {
+						this.filteredData = [];
+						
+						if (!this.filterMode) return;
+						
+						var f = this._filterModes[this.filterMode];
+						if (!f) return;
+						
+						for (var i = 0; i < this.data.length; i++) {
+							var item = ( this.filterProperty ? this.data[i][this.filterProperty] : this.data[i]);
+							if (f(item, query)) {
+								this.filteredData.push(this.data[i]);
+							}
+						}
+						
+					} finally {
+						this._dataAvailable();
+					}
+				},
+				
+				/**
+				 * Fires the data-available event to notify the listeners their query was completed.
+				 */
+				_dataAvailable: function() {
+					this.fire('cbn-data-available');
+				},
+				
+				/**
+				 * Finds and initializes the core-ajax child element, if any.
+				 * 
+				 * @private
+				 */
+				_initCoreAjax: function() {
+					this._ajax = this.querySelector('core-ajax');
+					if (this._ajax) {
+						this._ajax.addEventListener('core-response', this._ajaxResponse.bind(this));
+					}
+				},
+				
+				/**
+				 * Handles the ajax response.
+				 * 
+				 * @private
+				 * @param event
+				 */
+				_ajaxResponse: function(event) {
+					this.data = event.detail.response;
+					if (event.detail.xhr._isDataQuery) {
+						// locally filter the response
+						this._filter(event.detail.xhr._dataQuery);
+					}
+				}
+				
+			});
+			
+		})();
+		
+	</script>
+	
+</polymer-element>
