@@ -280,13 +280,14 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 				 */
 				_filter: function(query) {
 					try {
-						this.filteredData = [];
+						this.filteredData = null;
 						
 						if (!this.filterMode) return;
 						
 						var f = this._filterModes[this.filterMode];
 						if (!f) return;
 						
+						this.filteredData = [];
 						for (var i = 0; i < this.data.length; i++) {
 							var item = ( this.filterProperty ? this.data[i][this.filterProperty] : this.data[i]);
 							if (f(item, query)) {
@@ -295,6 +296,8 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 						}
 						
 					} finally {
+						if (!this.filteredData)
+							this.filteredData = this.data;
 						this._dataAvailable();
 					}
 				},
