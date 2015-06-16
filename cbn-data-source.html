@@ -40,10 +40,16 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 <!-- Imports -->
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../core-ajax/core-ajax.html">
+<link rel="import" href="cbn-data-filter.html">
 
 <polymer-element name="cbn-data-source">
 	<template>
+		<cbn-data-filter id="filter" auto="false"
+						 data="{{data}}" filteredData="{{filteredData}}" 
+						 filterProperty="{{filterProperty}}" filterMode="{{filterMode}}"></cbn-data-filter>
+		
 		<content select="core-ajax"></content>
+		
 	</template>
 	
 	<script>
@@ -82,23 +88,9 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 					
 					/**
 					 * The local filtering mode to use. 
-					 * If this is active, the results are available at the {@link #filteredData} property.
+					 * The filtered results are available at the {@link #filteredData} property.
 					 * 
-					 * Available modes: 
-					 * - '' (empty string): disable local filtering;
-					 * - 'exact': do an exact match (equals comparison);
-					 * - 'exact-ci': case-insensitive 'exact' matching;
-					 * - 'begins': check if the data item's value begins with the queried value;
-					 * - 'begins-ci': case-insensitive 'begins' matching;
-					 * - 'contains': check if the item's value contains the filtered value.
-					 * - 'contains-ci': case-insensitive 'contains' matching;
-					 * 
-					 * For custom filtering you can use the `cbn-data-query` event.
-					 * Note: if filtering is disabled, the {@link #data} property should be used instead of the 
-					 * {@link #filteredData} to access the results.
-					 * 
-					 * @type {String}
-					 * @default ''
+					 * Check {@link cbn-data-filter.html#filterMode} for all available modes.
 					 */
 					filterMode: '',
 					
@@ -137,36 +129,6 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 				 * Stores the time of the last request.
 				 */
 				_lastRequestTime: 0,
-				
-				/**
-				 * A map with functions to use for filtering.
-				 */
-				_filterModes: {
-					'exact': function(item, query) {
-						if (!item) return false;
-						return (item == query);
-					},
-					'exact-ci': function(item, query) {
-						if (!item) return false;
-						return (item.toLowerCase() == query.toLowerCase());
-					},
-					'begins': function(item, query) {
-						if (!item) return false;
-						return (item.indexOf(query) == 0);
-					},
-					'begins-ci': function(item, query) {
-						if (!item) return false;
-						return (item.toLowerCase().indexOf(query.toLowerCase()) == 0);
-					},
-					'contains': function(item, query) {
-						if (!item) return false;
-						return (item.indexOf(query) >= 0);
-					},
-					'contains-ci': function(item, query) {
-						if (!item) return false;
-						return (item.toLowerCase().indexOf(query.toLowerCase()) >= 0);
-					}
-				},
 				
 				
 				// Events: 
@@ -273,33 +235,15 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 				},
 				
 				/**
-				 * Filters the data, returning only the items that pass the query condition.
-				 * The results are stored inside the {@link #filteredData} property.
+				 * Filters the data, retaining only the items that pass the query condition.
+				 * The {@link #filteredData} property will be set with the results.
 				 * 
 				 * @param {String} query The value to filter by.
 				 */
 				_filter: function(query) {
-					try {
-						this.filteredData = null;
-						
-						if (!this.filterMode) return;
-						
-						var f = this._filterModes[this.filterMode];
-						if (!f) return;
-						
-						this.filteredData = [];
-						for (var i = 0; i < this.data.length; i++) {
-							var item = ( this.filterProperty ? this.data[i][this.filterProperty] : this.data[i]);
-							if (f(item, query)) {
-								this.filteredData.push(this.data[i]);
-							}
-						}
-						
-					} finally {
-						if (!this.filteredData)
-							this.filteredData = this.data;
-						this._dataAvailable();
-					}
+					this.$.filter.filter(null, query);
+					Platform.performMicrotaskCheckpoint();
+					this._dataAvailable();
 				},
 				
 				/**

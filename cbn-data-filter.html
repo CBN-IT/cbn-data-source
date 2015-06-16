@@ -1,0 +1,215 @@
+<!--
+`cbn-data-filter` is a non-visual component that receives a data array and outputs a filtered version of it.
+
+You can use this component by either setting `auto="true"` and specifying the {@link #data} and {@link #query} attributes and reading the 
+{@link #filteredData} output property (i.e. using data bindings) or by using the {@link #filter} method.
+
+@group cbn-form
+@element cbn-data-filter
+-->
+
+<!-- Imports -->
+<link rel="import" href="../polymer/polymer.html">
+
+<polymer-element name="cbn-data-filter">
+	
+	<script>
+		(function() {
+			
+			//noinspection JSUnusedGlobalSymbols
+			Polymer('cbn-data-filter', {
+				
+				publish: { // Published attributes: 
+					
+					/**
+					 * Specifies whether the component should automatically filter the values when either the data or 
+					 * the query value have changed.
+					 * 
+					 * @type {Boolean}
+					 * @default false
+					 */
+					auto: false,
+					
+					/**
+					 * The input data to filter.
+					 * 
+					 * @type {Array}
+					 * @default []
+					 */
+					data: null,
+					
+					/**
+					 * The query string to filter by.
+					 * 
+					 * @type {String}
+					 * @default ''
+					 */
+					query: '',
+					
+					/**
+					 * Returns the filtered data.
+					 * 
+					 * @type {Array}
+					 * @default []
+					 */
+					filteredData: null, 
+					
+					/**
+					 * Specify the object property to filter a data item by.
+					 * Specify empty value if your data is a String list and you want to compare the items directly.
+					 * 
+					 * @type {String}
+					 * @default 'value'
+					 */
+					filterProperty: 'value', 
+					
+					/**
+					 * The function to use for filtering. 
+					 * 
+					 * Available modes: 
+					 * - '' (empty string): disables filtering;
+					 * - 'exact': do an exact match (equals comparison);
+					 * - 'exact-ci': case-insensitive 'exact' matching;
+					 * - 'strict': do an exact match with type checking (uses the JS '===' operator);
+					 * - 'begins': check if the data item's value begins with the queried value;
+					 * - 'begins-ci': case-insensitive 'begins' matching;
+					 * - 'contains': check if the item's value contains the filtered value.
+					 * - 'contains-ci': case-insensitive 'contains' matching;
+					 * 
+					 * @type {String}
+					 * @default ''
+					 */
+					filterMode: '',
+					
+					/**
+					 * If this is false, an empty/false-y query disables filtering (the output/filtered data is unfiltered / 
+					 * will be the same as the input data).
+					 * 
+					 * @type {Boolean}
+					 * @default false
+					 */
+					filterEmptyQuery: false
+					
+				},
+				
+				// Private properties
+				
+				/**
+				 * A map with functions to use for filtering.
+				 */
+				_filterModes: {
+					'exact': function(value, query) {
+						if (!value) return false;
+						return (value == query);
+					},
+					'exact-ci': function(value, query) {
+						if (!value) return false;
+						return (value.toLowerCase() == query.toLowerCase());
+					},
+					'strict': function(value, query) {
+						return (value === query);
+					},
+					'begins': function(value, query) {
+						if (!value) return false;
+						return (value.indexOf(query) == 0);
+					},
+					'begins-ci': function(value, query) {
+						if (!value) return false;
+						return (value.toLowerCase().indexOf(query.toLowerCase()) == 0);
+					},
+					'contains': function(value, query) {
+						if (!value) return false;
+						return (value.indexOf(query) >= 0);
+					},
+					'contains-ci': function(value, query) {
+						if (!value) return false;
+						return (value.toLowerCase().indexOf(query.toLowerCase()) >= 0);
+					}
+				},
+				
+				
+				// Public API methods:
+				
+				/**
+				 * Filters the specified data array using the specified query.
+				 * 
+				 * @param {Array}  data The input data array. If undefined, the data is fetched from {@link #data}
+				 * @param {String} query The value to filter by. If undefined, the query will be taken from {@link #query}
+				 * @return {Array} The output / filtered data array. The {@link #filteredData} is also updated.
+				 */
+				filter: function(data, query) {
+					if (!data) data = this.data;
+					if (query === undefined) query = this.query;
+					
+					var enableFilter = (query || !this.enableEmptyQuery);
+					var f;
+					
+					if (!this.filterMode) {
+						enableFilter = false;
+					} else if (!(f = this._filterModes[this.filterMode])) {
+						enableFilter = false;
+					}
+					
+					if (!enableFilter) {
+						this.filteredData = data;
+						return data;
+					}
+					
+					var filteredData = [];
+					for (var i = 0; i < data.length; i++) {
+						var value = this._getFilterValue(this.data[i]);
+						if (f(value, query)) {
+							filteredData.push(this.data[i]);
+						}
+					}
+					
+					this.filteredData = filteredData;
+					return filteredData;
+				},
+				
+				// Internal methods:
+				
+				/**
+				 * Fires when the element is created. Used to initialize its attributes.
+				 */
+				created: function () {
+					if (!this.data) 
+						this.data = [];
+					if (!this.filteredData) 
+						this.filteredData = [];
+				},
+				
+				/**
+				 * Called when the {@link #data} property is changed.
+				 */
+				dataChanged: function() {
+					if (!this.auto) return;
+					this.filter(this.data, this.query);
+				},
+				
+				/**
+				 * Called when the {@link #query} property is changed.
+				 */
+				queryChanged: function() {
+					if (!this.auto) return;
+					this.filter(this.data, this.query);
+				},
+				
+				/**
+				 * Returns the filtered value of an item.
+				 * @private
+				 * @param {Object|String} item The item to fetch the filter property for.
+				 */
+				_getFilterValue: function(item) {
+					if (typeof item == 'string') 
+						return item;
+					return (this.filterProperty ? item[this.filterProperty] : item );
+				}
+				
+			});
+			
+		})();
+		
+	</script>
+	
+</polymer-element>
