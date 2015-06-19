@@ -231,6 +231,8 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 				 * Called when the data property is changed.
 				 */
 				dataChanged: function() {
+					if (this._ajax) 
+						return;
 					this.query(this._lastQuery);
 				},
 				
