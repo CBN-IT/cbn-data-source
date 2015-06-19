@@ -157,9 +157,9 @@ You can use this component by either setting `auto="true"` and specifying the {@
 					
 					var filteredData = [];
 					for (var i = 0; i < data.length; i++) {
-						var value = this._getFilterValue(this.data[i]);
+						var value = this._getFilterValue(data[i]);
 						if (f(value, query)) {
-							filteredData.push(this.data[i]);
+							filteredData.push(data[i]);
 						}
 					}
 					
