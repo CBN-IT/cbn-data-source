@@ -104,26 +104,26 @@ You can use this component by either setting `auto="true"` and specifying the {@
 					},
 					'exact-ci': function(value, query) {
 						if (!value) return false;
-						return (value.toLowerCase() == query.toLowerCase());
+						return ((value + '').toLowerCase() == query.toLowerCase());
 					},
 					'strict': function(value, query) {
 						return (value === query);
 					},
 					'begins': function(value, query) {
 						if (!value) return false;
-						return (value.indexOf(query) == 0);
+						return ((value + '').indexOf(query) == 0);
 					},
 					'begins-ci': function(value, query) {
 						if (!value) return false;
-						return (value.toLowerCase().indexOf(query.toLowerCase()) == 0);
+						return ((value + '').toLowerCase().indexOf(query.toLowerCase()) == 0);
 					},
 					'contains': function(value, query) {
 						if (!value) return false;
-						return (value.indexOf(query) >= 0);
+						return ((value + '').indexOf(query) >= 0);
 					},
 					'contains-ci': function(value, query) {
 						if (!value) return false;
-						return (value.toLowerCase().indexOf(query.toLowerCase()) >= 0);
+						return ((value + '').toLowerCase().indexOf(query.toLowerCase()) >= 0);
 					}
 				},
 				
