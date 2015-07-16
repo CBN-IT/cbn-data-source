@@ -16,11 +16,15 @@
 <template is="auto-binding">
 	
 	<cbn-data-source id="ajaxSource1">
-		<core-ajax url="ajax-data1.json" handleAs="json"></core-ajax>
+		<core-ajax auto url="/ajax-test.json" handleAs="json"></core-ajax>
 	</cbn-data-source>
 	
 	<cbn-data-source id="ajaxSource2" filtermode="exact-ci" ajaxparameter="query">
-		<core-ajax url="ajax-data1.json" params='{"first":"1"}' handleAs="json"></core-ajax>
+		<core-ajax auto url="/ajax-test.json" params='{"first":"1"}' handleAs="json"></core-ajax>
+	</cbn-data-source>
+	
+	<cbn-data-source id="ajaxSource3" filtermode="begins-ci">
+		<core-ajax url="/ajax-test.json" handleAs="json"></core-ajax>
 	</cbn-data-source>
 	
 </template>
@@ -28,7 +32,7 @@
 <script>
 	
 	var tpl;
-	var ajaxSource1, ajaxSource2;
+	var ajaxSource1, ajaxSource2, ajaxSource3;
 	
 	// Test Data:
 	var expectedData1 = [
@@ -55,6 +59,7 @@
 		// hack for poly-filled elements, need to re-fetch the proxied element
 		ajaxSource1 = document.querySelector('#ajaxSource1');
 		ajaxSource2 = document.querySelector('#ajaxSource2');
+		ajaxSource3 = document.querySelector('#ajaxSource3');
 		tpl = document.querySelector('template[is="auto-binding"]');
 		
 		// addEventListener with automatic cleanup at the end of a test
@@ -77,10 +82,22 @@
 	});
 	
 	setup(function(){
-		// nothing here
+		this.server = sinon.fakeServer.create();
+		this.server.respondWith("GET", /^\/ajax-test\.json.*/,
+				[200, { "Content-Type": "application/json" },
+				 '[\
+				 	{ "key":"1", "value": "First" },\
+				 	{ "key":"2", "value": "Second" },\
+				 	{ "key":"3", "value": "Third" },\
+				 	{ "key":"4", "value": "Four" },\
+				 	{ "key":"5", "value": "Five" },\
+				 	{ "key":"6", "value": "Six" },\
+				 	{ "key":"7", "value": "Seven" }\
+				 ]']);
 	});
 	
 	teardown(function() {
+		this.server.restore();
 		this.cleanupEventListeners();
 	});
 	
@@ -92,6 +109,7 @@
 			});
 		});
 		ajaxSource1.query();
+		this.server.respond();
 	});
 	
 	test('ajax with local filtering', function(done) {
@@ -102,6 +120,21 @@
 			});
 		});
 		ajaxSource2.query("first");
+		this.server.respond();
+	});
+	
+	test('ajax with no auto', function() {
+		var dataAvailable = sinon.spy();
+		this.addEventListener(ajaxSource3, 'cbn-data-available', dataAvailable);
+		
+		ajaxSource3.query("first");
+		ajaxSource3.query("second");
+		ajaxSource3.query("third");
+		ajaxSource3.querySelector('core-ajax').go();
+		ajaxSource3.query("another");
+		
+		this.server.respond();
+		assert.ok(dataAvailable.calledTwice, 'cbn-data-available called twice');
 	});
 	
 </script>

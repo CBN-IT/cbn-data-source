@@ -130,6 +130,16 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 				 */
 				_lastRequestTime: 0,
 				
+				/**
+				 * Whether the core-ajax 'auto' attribute was true (i.e. the user wants the ajax reload to run automatically).
+				 */
+				_autoAjax: false,
+				
+				/**
+				 * Will become true after the ajax data is loaded after the first query.
+				 */
+				_ajaxLoaded: false,
+				
 				
 				// Events: 
 				
@@ -172,7 +182,7 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 						return;
 					}
 					
-					if (this._ajax) {
+					if (this._ajax && (this._autoAjax || !this._ajaxLoaded)) {
 						var curTime = (new Date()).getTime();
 						if ( !this._lastRequestTime || (curTime-this._lastRequestTime) >= this.ajaxInterval ) {
 							// too much time has passed, issue a new AJAX request
@@ -264,6 +274,8 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 					this._ajax = this.querySelector('core-ajax');
 					if (this._ajax) {
 						this._ajax.addEventListener('core-response', this._ajaxResponse.bind(this));
+						this._autoAjax = this._ajax.auto;
+						this._ajax.auto = false;
 					}
 				},
 				
@@ -277,7 +289,12 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 					this.data = event.detail.response;
 					if (event.detail.xhr._isDataQuery) {
 						// locally filter the response
+						this._ajaxLoaded = true;
 						this._filter(event.detail.xhr._dataQuery);
+						
+					} else {
+						this._ajaxLoaded = true;
+						this._filter(this._lastQuery);
 					}
 				}
 				
