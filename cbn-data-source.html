@@ -140,6 +140,11 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 				 */
 				_ajaxLoaded: false,
 				
+				/**
+				 * Whether there is an AJAX request ongoing.
+				 */
+				_ajaxInProgress: false,
+				
 				
 				// Events: 
 				
@@ -182,7 +187,7 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 						return;
 					}
 					
-					if (this._ajax && (this._autoAjax || !this._ajaxLoaded)) {
+					if (this._ajax && (this._autoAjax || !this._ajaxLoaded) && !this._ajaxInProgress) {
 						var curTime = (new Date()).getTime();
 						if ( !this._lastRequestTime || (curTime-this._lastRequestTime) >= this.ajaxInterval ) {
 							// too much time has passed, issue a new AJAX request
@@ -207,13 +212,13 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 					if (!this._ajax) 
 						return false;
 					this._ajax.abort();
-					
 					if (this.ajaxParameter) {
 						if (!this._ajax.params) 
 							this._ajax.params = {};
 						this._ajax.params[this.ajaxParameter] = query;
 					}
 					
+					this._ajaxInProgress = true;
 					this._lastRequestTime = (new Date()).getTime();
 					return this._ajax.go();
 				},
@@ -286,14 +291,15 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 				 * @param event
 				 */
 				_ajaxResponse: function(event) {
+					this._ajaxInProgress = false;
+					this._ajaxLoaded = true;
 					this.data = event.detail.response;
 					if (event.detail.xhr._isDataQuery) {
 						// locally filter the response
-						this._ajaxLoaded = true;
 						this._filter(event.detail.xhr._dataQuery);
 						
 					} else {
-						this._ajaxLoaded = true;
+						// use the last filter
 						this._filter(this._lastQuery);
 					}
 				}

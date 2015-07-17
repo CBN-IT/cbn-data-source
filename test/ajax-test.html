@@ -130,11 +130,14 @@
 		ajaxSource3.query("first");
 		ajaxSource3.query("second");
 		ajaxSource3.query("third");
+		this.server.respond();
+		
+		ajaxSource3.query("another");
 		ajaxSource3.querySelector('core-ajax').go();
 		ajaxSource3.query("another");
-		
 		this.server.respond();
-		assert.ok(dataAvailable.calledTwice, 'cbn-data-available called twice');
+		
+		assert.equal(dataAvailable.callCount, 2, 'cbn-data-available called twice');
 	});
 	
 </script>
