@@ -95,11 +95,11 @@
 		this.addEventListener(datasource1, 'cbn-data-query', queryHandler);
 		this.addEventListener(datasource1, 'cbn-data-available', availableHandler);
 		
-		datasource1.query();
-		assert(queryHandler.called ,'cbn-data-query fired');
+		assert.ok(datasource1.query()); // should return true, the data is available right away
+		assert(queryHandler.called,'cbn-data-query was fired');
 		
 		flush(function() {
-			assert(availableHandler.called ,'cbn-data-available fired');
+			assert(availableHandler.notCalled ,'cbn-data-available wasn\'t fired');
 			assert.deepEqual(datasource1.data, testData1, 'data 1');
 			done();
 		});
@@ -114,11 +114,11 @@
 		
 		assert.equal(datasource2.filterMode, 'contains-ci', 'filter mode');
 		
-		datasource2.query('S');
+		assert.ok(datasource2.query('S')); // data is available
 		assert(queryHandler.called ,'cbn-data-query fired');
 		
 		flush(function() {
-			assert(availableHandler.called ,'cbn-data-available fired');
+			assert(availableHandler.notCalled ,'cbn-data-available wasn\'t fired');
 			assert.deepEqual(datasource2.data, testData2, 'data 2');
 			assert.deepEqual(datasource2.filteredData, test2ExpectedData, 'filtered data 2');
 			done();

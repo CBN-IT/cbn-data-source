@@ -154,17 +154,17 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 				 * The event details object has the 'query' member, which specifies the query that has been 
 				 * made on the data.
 				 * 
+				 * You can cancel this event by calling {@link Event#preventDefault}. If you do that, you can set a 
+				 * return for the {@link #query} method by using the `returnStatus` custom event property.
+				 * 
 				 * @event cbn-data-query
 				 */
 				
 				/**
 				 * Emits an event when new data is available. 
-				 * It is the follow-up event to the {@link #query} method.
 				 * 
-				 * If the data is manually specified, the event is synchronously fired whenever the element's data is 
-				 * changed.
-				 * For ajax requests, the event is fired after the server responds and the data is set to the response 
-				 * value.
+				 * It is the follow-up event to the {@link #query} method.
+				 * You must check the result of the {@link #query} method in order to know if this event will be fired.
 				 * 
 				 * @event cbn-data-available
 				 */
@@ -173,35 +173,55 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 				
 				/**
 				 * Queries the element for (optionally, filtered) data.
-				 * The `cbn-data-available` event will be fired when the data is available.
+				 * 
+				 * If the result is true, the data is already available using the {@link #data} and {@link #filteredData} 
+				 * properties. Otherwise, the `cbn-data-available` event will be fired as soon as the data is available.
 				 * 
 				 * @param {String} query The query value (to filter by).
+				 * @return {Boolean} Returns true if the data is available right away, false if you need to wait for a 
+				 *                   `cbn-data-available` event; in case the `cbn-data-query` event in canceled, the 
+				 *                   return status is provided by the event handler.
 				 */
 				query: function(query) {
 					this._lastQuery = query;
 					
-					var ev = this.fire('cbn-data-query', {
+					/** @var {Event} ev */
+					/** @member {Boolean} ev.returnStatus */
+					var ev;
+					ev = this.fire('cbn-data-query', {
 						query: query
 					}, null, false, true); // doesn't bubble, cancellable
 					if (ev.defaultPrevented) {
-						return;
+						return ev.returnStatus;
 					}
 					
-					if (this._ajax && (this._autoAjax || !this._ajaxLoaded) && !this._ajaxInProgress) {
-						var curTime = (new Date()).getTime();
-						if ( !this._lastRequestTime || (curTime-this._lastRequestTime) >= this.ajaxInterval ) {
-							// too much time has passed, issue a new AJAX request
-							var xhr = this.ajaxReload(query);
-							xhr._isDataQuery = true;
-							xhr._dataQuery = query;
+					if (this._ajax) {
+						if (this._ajaxInProgress) {
+							return false; // ajax in progress, data not yet available
+							
+						} else if (this._autoAjax || !this._ajaxLoaded) {
+							var curTime = (new Date()).getTime();
+							if (!this._lastRequestTime || (curTime - this._lastRequestTime) >= this.ajaxInterval) {
+								// too much time has passed, issue a new AJAX request
+								var xhr = this.ajaxReload(query);
+								xhr._isDataQuery = true;
+								xhr._dataQuery = query;
+								return false;
+								
+							} else {
+								// use the cached data and, optionally, filter the results
+								this._filter(query, true);
+								return true;
+							}
 							
 						} else {
-							// use the cached data and, optionally, filter the results
-							this._filter(query);
+							this._filter(query, true);
+							return true;
 						}
 						
 					} else {
-						this._filter(query);
+						this._filter(query, true);
+						return true;
 					}
 				},
 				
@@ -256,11 +276,13 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 				 * The {@link #filteredData} property will be set with the results.
 				 * 
 				 * @param {String} query The value to filter by.
+				 * @param {Boolean} [skipEvent] Skip sending a data-available event.
 				 */
-				_filter: function(query) {
+				_filter: function(query, skipEvent) {
 					this.$.filter.filter(null, query);
 					Platform.performMicrotaskCheckpoint();
-					this._dataAvailable();
+					if (!skipEvent)
+						this._dataAvailable();
 				},
 				
 				/**

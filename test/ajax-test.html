@@ -119,7 +119,7 @@
 				done();
 			});
 		});
-		ajaxSource2.query("first");
+		assert.notOk(ajaxSource2.query("first"), 'data not available');
 		this.server.respond();
 	});
 	
@@ -127,14 +127,14 @@
 		var dataAvailable = sinon.spy();
 		this.addEventListener(ajaxSource3, 'cbn-data-available', dataAvailable);
 		
-		ajaxSource3.query("first");
-		ajaxSource3.query("second");
-		ajaxSource3.query("third");
+		assert.notOk(ajaxSource3.query("first"), 'data not available');
+		assert.notOk(ajaxSource3.query("second"), 'data still not available');
+		assert.notOk(ajaxSource3.query("third"), 'what did you expect, for data to be available now?');
 		this.server.respond();
 		
-		ajaxSource3.query("another");
+		assert.ok(ajaxSource3.query("another"), 'we\'ve got data!');
 		ajaxSource3.querySelector('core-ajax').go();
-		ajaxSource3.query("another");
+		assert.ok(ajaxSource3.query("another"), 'data is cached');
 		this.server.respond();
 		
 		assert.equal(dataAvailable.callCount, 2, 'cbn-data-available called twice');
