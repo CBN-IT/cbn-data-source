@@ -314,8 +314,16 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 				 */
 				_ajaxResponse: function(event) {
 					this._ajaxInProgress = false;
+					var response = event.detail.response;
+					
+					if (typeof response != 'object') {
+						console.error('invalid response received' + (event.detail.response+'').substring(0, 128));
+						return;
+					}
+					
 					this._ajaxLoaded = true;
 					this.data = event.detail.response;
+					
 					if (event.detail.xhr._isDataQuery) {
 						// locally filter the response
 						this._filter(event.detail.xhr._dataQuery);
