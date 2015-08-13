@@ -135,18 +135,26 @@ You can use this component by either setting `auto="true"` and specifying the {@
 				 * 
 				 * @param {Array}  data The input data array. If undefined, the data is fetched from {@link #data}
 				 * @param {String} query The value to filter by. If undefined, the query will be taken from {@link #query}
+				 * @param {String} filterMode how to filter. If undefined, the query will be taken from {@link #filterMode}
+				 * @param {Boolean} noUpdate if true, it will stop updating {@link #filteredData} --> makes the function static
 				 * @return {Array} The output / filtered data array. The {@link #filteredData} is also updated.
 				 */
-				filter: function(data, query) {
-					if (!data) data = this.data;
-					if (query === undefined) query = this.query;
-					
+				filter: function(data, query, filterMode, noUpdate) {
+					if (!data) {
+						data = this.data;
+					}
+					if (query === undefined) {
+						query = this.query;
+					}
+					if (filterMode === undefined) {
+						filterMode = this.filterMode;
+					}
 					var enableFilter = (query || !this.enableEmptyQuery);
 					var f;
 					
-					if (!this.filterMode) {
+					if (!filterMode) {
 						enableFilter = false;
-					} else if (!(f = this._filterModes[this.filterMode])) {
+					} else if (!(f = this._filterModes[filterMode])) {
 						enableFilter = false;
 					}
 					
@@ -162,8 +170,9 @@ You can use this component by either setting `auto="true"` and specifying the {@
 							filteredData.push(data[i]);
 						}
 					}
-					
-					this.filteredData = filteredData;
+					if (noUpdate !== true) {
+						this.filteredData = filteredData;
+					}
 					return filteredData;
 				},
 				
