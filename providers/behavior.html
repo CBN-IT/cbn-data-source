@@ -1,0 +1,65 @@
+<script>
+(function(scope) {
+	
+	//noinspection JSUnusedGlobalSymbols
+	/**
+	 * A behavior that can be used to implement custom providers for `cbn-data-source`.
+	 * 
+	 * @polymerBehavior
+	 */
+	scope.CbnDataProviderBehavior = {
+		
+		properties: {
+			
+			/**
+			 * Access the query results of the provider.
+			 */
+			data: {
+				type: Array,
+				readOnly: true,
+				value: function () { return []; },
+				notify: true
+			}
+			
+		},
+		
+		hostAttributes: {
+			'is-data-provider': true
+		},
+		
+		/**
+		 * Emitted when new data is available.
+		 * 
+		 * Fires when an asynchronous (e.g. AJAX) response is received for a previous `query` call.
+		 * 
+		 * @event data-available
+		 */
+		
+		// Public / API methods
+		
+		/**
+		 * Queries the provider for data.
+		 * 
+		 * If the result is true, the data is already available using the `data` property. Otherwise, the 
+		 * `data-available` event will be fired as soon as the data is available.
+		 * 
+		 * @param {String} [query]  The main query value.
+		 * @return {Boolean} Returns true if the data is available right away, false if you need to wait for a 
+		 *                   `data-available` event.
+		 */
+		query: function(query) { /* ABSTRACT */ },
+		
+		
+		// Protected methods:
+		
+		/**
+		 * Fires the data-available event to notify the listeners that their asynchronous query was completed.
+		 */
+		_dataAvailable: function() {
+			this.fire('data-available');
+		}
+		
+	};
+	
+})(window);
+</script>
