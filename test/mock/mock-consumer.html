@@ -1,0 +1,41 @@
+<link rel="import" href="../../../polymer/polymer.html">
+<link rel="import" href="../../consumer-behavior.html">
+
+<dom-module id="mock-data-source-consumer">
+	<template>
+		<content></content>
+	</template>
+</dom-module>
+
+<script>
+	Polymer({
+		is: 'mock-data-source-consumer',
+		
+		properties: {
+			dataSourceInitialized: {
+				type: Boolean,
+				value: false
+			}
+		},
+		
+		get _searchScope() {
+			return Polymer.dom(this).parentNode;
+		},
+		
+		behaviors: [ CbnDataSource.ConsumerBehavior ],
+		
+		query: function(q) {
+			if (!this._dataSource) return null;
+			return this._dataSource.query(q);
+		},
+		
+		_dataSourceAvailableCallback: function(event) {
+			this.fire('test-data-source-available', { dataSource: event.target });
+		},
+		
+		_dataSourceInitializedCallback: function() {
+			this.dataSourceInitialized = true;
+		}
+		
+	});
+</script>
