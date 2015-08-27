@@ -127,6 +127,7 @@ You can use this component by either setting `auto="true"` and specifying the {@
 						return ((value + '').toLowerCase().indexOf(query.toLowerCase()) >= 0);
 					},
 					'contains-cid': function(value, query){
+						if (!value) return false;
 						var matches = value.match(new RegExp(stringToRegexp(query), "gi"));
 						if (matches === null) {
 							return false;
