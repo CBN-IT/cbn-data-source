@@ -123,7 +123,7 @@ Definition file for the `CbnDataSource.ConsumerBehavior` utility behavior.
 				
 				// disable the current data source
 				if (this._dataSource) {
-					this._dataSource.removeEventListener('data-changed', this._dataSourceAvailableCallback);
+					this._dataSource.removeEventListener('data-available', this._dataSourceAvailableCallback);
 					this._dataSource = null;
 				}
 				if (dataSource) {
@@ -132,7 +132,7 @@ Definition file for the `CbnDataSource.ConsumerBehavior` utility behavior.
 				
 				// initialize the data source element
 				if (this._dataSource) {
-					this._dataSource.addEventListener('data-changed', this._dataSourceAvailableCallback);
+					this._dataSource.addEventListener('data-available', this._dataSourceAvailableCallback);
 					
 					// fire the protected API callback
 					this._dataSourceInitializedCallback();
