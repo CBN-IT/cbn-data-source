@@ -10,6 +10,7 @@ You can use this component by either setting `auto="true"` and specifying the {@
 
 <!-- Imports -->
 <link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="filters/filters.html">
 
 <dom-module id="cbn-data-filter">
 	<template></template>
@@ -104,38 +105,6 @@ You can use this component by either setting `auto="true"` and specifying the {@
 			
 			// Private properties
 			
-			/**
-			 * A map with functions to use for filtering.
-			 */
-			_filterModes: {
-				'exact': function(value, query) {
-					if (!value) return false;
-					return (value == query);
-				},
-				'exact-ci': function(value, query) {
-					if (!value) return false;
-					return ((value + '').toLowerCase() == query.toLowerCase());
-				},
-				'strict': function(value, query) {
-					return (value === query);
-				},
-				'begins': function(value, query) {
-					if (!value) return false;
-					return ((value + '').indexOf(query) == 0);
-				},
-				'begins-ci': function(value, query) {
-					if (!value) return false;
-					return ((value + '').toLowerCase().indexOf(query.toLowerCase()) == 0);
-				},
-				'contains': function(value, query) {
-					if (!value) return false;
-					return ((value + '').indexOf(query) >= 0);
-				},
-				'contains-ci': function(value, query) {
-					if (!value) return false;
-					return ((value + '').toLowerCase().indexOf(query.toLowerCase()) >= 0);
-				}
-			},
 			
 			
 			// Public API methods:
@@ -162,7 +131,7 @@ You can use this component by either setting `auto="true"` and specifying the {@
 				
 				if (!filterMode) {
 					enableFilter = false;
-				} else if (!(f = this._filterModes[filterMode])) {
+				} else if (!(f = CbnDataSource.filterModes[filterMode])) {
 					console.warn('`cbn-data-filter`: invalid filter mode', filterMode);
 					enableFilter = false;
 				}

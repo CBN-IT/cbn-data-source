@@ -5,9 +5,9 @@ Definition file for the `CbnDataSource.ConsumerBehavior` utility behavior.
 <link rel="import" href="../polymer/polymer.html">
 
 <script>
-	window.CbnDataSource = {};
 	
 	(function(scope) {
+		scope = window.CbnDataSource = window.CbnDataSource || {};
 		
 		//noinspection JSUnusedGlobalSymbols
 		/**
@@ -165,6 +165,6 @@ Definition file for the `CbnDataSource.ConsumerBehavior` utility behavior.
 			
 		};
 		
-	})(window.CbnDataSource);
+	})();
 	
 </script>

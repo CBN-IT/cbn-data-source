@@ -52,9 +52,21 @@
 			{"key": "7", "value": "Seven"}
 		];
 		
+		var testData3 = [
+			{"key": "4", "value": "Pătru"},
+			{"key": "5", "value": "Cinci"},
+			{"key": "6", "value": "Six"},
+			{"key": "7", "value": "Șepte"}
+		];
+		
 		var test2ExpectedData = [
 			{"key": "6", "value": "Six"},
 			{"key": "7", "value": "Seven"}
+		];
+		
+		var test3ExpectedData = [
+			{"key": "6", "value": "Six"},
+			{"key": "7", "value": "Șepte"}
 		];
 		
 		test('auto filtering', function () {
@@ -88,6 +100,18 @@
 			
 			assert.deepEqual(f.filteredData, [], 'filteredData unchanged');
 			
+		});
+		
+		test('advanced filters', function () {
+			// clone the test data
+			f = fixture('filter2', {
+				testData: testData3
+			});
+			
+			f.query = 's';
+			
+			var filtered3 = f.filter(testData3, "S", 'contains-cid', true);
+			assert.deepEqual(filtered3, test3ExpectedData, 'advanced filtered data');
 		});
 	});
 	
