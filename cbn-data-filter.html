@@ -46,7 +46,7 @@ You can use this component by either setting `auto="true"` and specifying the {@
 				 * The query string to filter by.
 				 */
 				query: {
-					type: String,
+					type: Object,
 					value: '',
 					observer: '_queryChanged'
 				},
@@ -113,7 +113,7 @@ You can use this component by either setting `auto="true"` and specifying the {@
 			 * Filters the specified data array using the specified query.
 			 * 
 			 * @param {Array}  data The input data array. If undefined, the data is fetched from {@link #data}
-			 * @param {String} query The value to filter by. If undefined, the query will be taken from {@link #query}
+			 * @param {Object|String} query The value to filter by. If undefined, the query will be taken from {@link #query}
 			 * @param {String} [filterMode] How to filter. If undefined, the query will be taken from {@link #filterMode}
 			 * @param {Boolean} [noUpdate] if true, it will stop updating {@link #filteredData} --> makes the function static
 			 * @return {Array} The output / filtered data array. The {@link #filteredData} is also updated (unless noUpdate is specified).

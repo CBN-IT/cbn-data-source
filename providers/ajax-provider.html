@@ -108,10 +108,14 @@ You can either use the `iron-ajax` directly inside the `cbn-data-source` element
 			/**
 			 * Queries the provider for data.
 			 * 
+			 * If the supplied query is a string, the AJAX request will contain just the GET `ajaxParameter` set to 
+			 * this value.
+			 * If it is an object, it will be directly supplied as AJAX params map.
+			 * 
 			 * If the result is true, the data is already available using the `data` property. Otherwise, the 
 			 * `data-available` event will be fired as soon as the data is available.
 			 * 
-			 * @param {String} [query]  The main query value.
+			 * @param {Object|String} [query]  The query to send to the server.
 			 * @return {Boolean} Returns true if the data is available right away, false if you need to wait for a 
 			 *                   `data-available` event.
 			 */
@@ -159,6 +163,8 @@ You can either use the `iron-ajax` directly inside the `cbn-data-source` element
 			 * 
 			 * You could also use the generateRequest() method on the iron-ajax element, but must manually set the 
 			 * parameters in that case.
+			 * 
+			 * @param {Object|String} query The query to send to the server.
 			 */
 			reload: function(query) {
 				if (!this.ironAjax) 
@@ -171,11 +177,19 @@ You can either use the `iron-ajax` directly inside the `cbn-data-source` element
 					this.ironAjax.lastRequest.abort();
 				
 				var optionsChanged = false;
-				if (this.ajaxParameter) {
-					if (!this.ironAjax.params) {
-						this.ironAjax.params = {};
+				if (this.ajaxParameter || (query && typeof query == 'object')) {
+					var params = (this.ironAjax.params ? JSON.parse(JSON.stringify(this.ironAjax.params)) : {});
+					if (query && typeof query == 'string') {
+						params[this.ajaxParameter] = query;
+					} else if (query && typeof query == 'object') {
+						for (var j in query) {
+							if (!query.hasOwnProperty(j)) continue;
+							params[j] = query[j];
+						}
+					} else {
+						params[this.ajaxParameter] = '';
 					}
-					this.ironAjax.params[this.ajaxParameter] = query;
+					this.ironAjax.params = params;
 					optionsChanged = true;
 				}
 				

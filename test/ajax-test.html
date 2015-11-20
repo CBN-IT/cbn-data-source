@@ -134,6 +134,25 @@
 			}, 1);
 		});
 		
+		test('advanced parameters query', function (done) {
+			f = fixture('simpleAjaxSource');
+			
+			var dataAvailable = sinon.spy();
+			f.addEventListener('data-available', dataAvailable);
+			
+			assert.notOk(f.query( { hello: 'world', value: 'ye' } ), 'data not cached');
+			assert.ok(this.server.requests.length, 'AJAX request made');
+			assert.equal(this.server.requests[0].url, "/ajax-test.json?hello=world&value=ye", 'request URL with object query');
+			
+			this.server.respond();
+			
+			setTimeout(function () {
+				assert.equal(dataAvailable.callCount, 1, 'data-available fired');
+				assert.deepEqual(f.filteredData, expectedData1, 'ajax results');
+				done();
+			}, 1);
+		});
+		
 		test('ajax query change triggers a reload', function(done) {
 			f = fixture('filteredAjaxSource');
 			
