@@ -178,15 +178,19 @@ You can either use the `iron-ajax` directly inside the `cbn-data-source` element
 				
 				var optionsChanged = false;
 				if (this.ajaxParameter || (query && typeof query == 'object')) {
-					var params = (this.ironAjax.params ? JSON.parse(JSON.stringify(this.ironAjax.params)) : {});
-					if (query && typeof query == 'string') {
+					var params = {};
+					if (this.ajaxParameter && query && typeof query == 'string') {
+						if (this.ironAjax.params) {
+							params = JSON.parse(JSON.stringify(this.ironAjax.params)); 
+						}
 						params[this.ajaxParameter] = query;
+						
 					} else if (query && typeof query == 'object') {
 						for (var j in query) {
 							if (!query.hasOwnProperty(j)) continue;
 							params[j] = query[j];
 						}
-					} else {
+					} else if (this.ajaxParameter) {
 						params[this.ajaxParameter] = '';
 					}
 					this.ironAjax.params = params;
