@@ -61,6 +61,15 @@ You can either use the `iron-ajax` directly inside the `cbn-data-source` element
 				},
 				
 				/**
+				 * Ajax debounce interval (as an alternative to interval above).
+				 * Aggregates multiple queries and calls them after a finite amount of time (from the last query).
+				 */
+				ajaxDebounce: {
+					type: Number,
+					value: 0
+				},
+				
+				/**
 				 * Stores the last requested query string.
 				 */
 				lastQuery: {
@@ -144,7 +153,13 @@ You can either use the `iron-ajax` directly inside the `cbn-data-source` element
 					} else if (doRequest) {
 						if (requestIntervalExpired) {
 							// too much time has passed, issue a new AJAX request
-							this.reload(query);
+							if (this.ajaxDebounce) {
+								this.debounce('ajax-debounce', function() {
+									this.reload(query);
+								}, this.ajaxDebounce);
+							} else {
+								this.reload(query);
+							}
 							return false;
 							
 						} else {
