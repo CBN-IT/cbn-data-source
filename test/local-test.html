@@ -51,6 +51,10 @@
 			{"key": "7", "value": "Seven"}
 		];
 		
+		var testData3 = [
+			{"key": "3", "value": "Third"}
+		];
+		
 		var test2ExpectedData = [
 			{"key": "6", "value": "Six"},
 			{"key": "7", "value": "Seven"}
@@ -89,6 +93,23 @@
 			assert(availableHandler.notCalled, 'data-available wasn\'t fired');
 			assert.deepEqual(f.data, testData2, 'data value');
 			assert.deepEqual(f.filteredData, test2ExpectedData, 'filtered data');
+		});
+		
+		test('user data change', function() {
+			f = fixture('datasource2', {
+				testData: JSON.parse(JSON.stringify(testData2))
+			});
+			var queryHandler = sinon.spy();
+			var availableHandler = sinon.spy();
+			
+			f.addEventListener('query', queryHandler);
+			f.addEventListener('data-available', availableHandler);
+			
+			assert.deepEqual(f.data, testData2, 'initial data value');
+			f.data = testData3;
+			
+			assert(availableHandler.calledOnce, 'data-available fired');
+			assert.deepEqual(f.data, testData3, 'new data value');
 		});
 	});
 	

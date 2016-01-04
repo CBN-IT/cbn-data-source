@@ -182,10 +182,27 @@ need to configure the provider's parameters:
 				
 			},
 			
+			observers: [
+				'_dataChanged(data.splices)'
+			],
+			
+			/**
+			 * Whether the data property is being changed internally.
+			 */
+			_dataInternallyChanged: false,
+			
 			/**
 			 * Event sent when the query method is used. Cancellable.
 			 * 
 			 * @event query
+			 */
+			
+			/**
+			 * Event sent when the data is changed externally (i.e. by the user).
+			 * 
+			 * Providers can also emit these types of events when data is changed asynchronously.
+			 * 
+			 * @event data-available
 			 */
 			
 			
@@ -197,12 +214,12 @@ need to configure the provider's parameters:
 			 * If local filtering is enabled, the 
 			 * 
 			 * If the result is true, the data is already available using the {@link #data} and {@link #filteredData} 
-			 * properties. Otherwise, the `data-changed` event will be fired as soon as the data is available.
+			 * properties. Otherwise, the `data-available` event will be fired as soon as the data is available.
 			 * 
 			 * @param {String} [query]  The main query value. If undefined, the last supplied value will be used.
 			 * @param {String} [filter] The value to filter the results by. If unspecified, the query value will be used.
 			 * @return {Boolean} Returns true if the data is available right away, false if you need to wait for a 
-			 *                   `cbn-data-available` event; in case the `cbn-data-query` event in canceled, the 
+			 *                   `data-available` event from the provider; in case the `query` event in canceled, the 
 			 *                   return status is provided by the event handler.
 			 */
 			query: function(query, filter) {
@@ -233,7 +250,12 @@ need to configure the provider's parameters:
 					this._setQueryValue(query);
 					
 					if (result) {
-						this.data = this.provider.data;
+						this._dataInternallyChanged = true;
+						try {
+							this.data = this.provider.data;
+						} finally {
+							this._dataInternallyChanged = false;
+						}
 						this.filter(filter);
 					} else {
 						//noinspection JSUnresolvedFunction
@@ -282,8 +304,6 @@ need to configure the provider's parameters:
 			
 			/**
 			 * Finds and initializes the data provider element, if any.
-			 * 
-			 * @private
 			 */
 			_initDataProvider: function() {
 				//noinspection JSUnresolvedFunction
@@ -307,11 +327,25 @@ need to configure the provider's parameters:
 			
 			/**
 			 * Called when the provider data is changed.
-			 * 
-			 * @private
 			 */
 			_providerDataAvailable: function() {
-				this.data = this.provider.data;
+				this._dataInternallyChanged = true;
+				try {
+					this.data = this.provider.data;
+				} finally {
+					this._dataInternallyChanged = false;
+				}
+				this.filter(/**@type {String}*/(this.filterValue));
+			},
+			
+			/**
+			 * Handle user data changes.
+			 */
+			_dataChanged: function() {
+				if (this._dataInternallyChanged) return;
+				
+				this.fire('data-available');
+				
 				this.filter(/**@type {String}*/(this.filterValue));
 			}
 			
