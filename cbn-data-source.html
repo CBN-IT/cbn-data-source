@@ -183,7 +183,7 @@ need to configure the provider's parameters:
 			},
 			
 			observers: [
-				'_dataChanged(data.splices)'
+				'_dataChanged(data.*)'
 			],
 			
 			/**
@@ -344,9 +344,8 @@ need to configure the provider's parameters:
 			_dataChanged: function() {
 				if (this._dataInternallyChanged) return;
 				
-				this.fire('data-available');
-				
 				this.filter(/**@type {String}*/(this.filterValue));
+				this.fire('data-available');
 			}
 			
 		});
