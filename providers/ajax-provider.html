@@ -103,16 +103,6 @@ You can either use the `iron-ajax` directly inside the `cbn-data-source` element
 			 */
 			_ajaxLoaded: false,
 			
-			/**
-			 * Whether there is an AJAX request ongoing.
-			 */
-			get _ajaxInProgress() {
-				if (!this.ironAjax.lastRequest) return false;
-				if (this.ironAjax.lastRequest.aborted) return false;
-				
-				return this.ironAjax.lastRequest.xhr.readyState < 4;
-			},
-			
 			
 			/**
 			 * Queries the provider for data.
@@ -147,10 +137,7 @@ You can either use the `iron-ajax` directly inside the `cbn-data-source` element
 						doRequest = (this.lastQuery != query) || (this.ajaxInterval && requestIntervalExpired);
 					}
 					
-					if (this._ajaxInProgress) {
-						return false; // ajax in progress, data not yet available but do not start a new request
-						
-					} else if (doRequest) {
+					if (doRequest) {
 						if (requestIntervalExpired) {
 							// too much time has passed, issue a new AJAX request
 							if (this.ajaxDebounce) {
