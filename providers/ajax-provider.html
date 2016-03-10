@@ -1,0 +1,282 @@
+<!--
+An ajax provider that decorates a `iron-ajax` element and uses it as data provider for `cbn-data-source`.
+
+You can either use the `iron-ajax` directly inside the `cbn-data-source` element or as direct child of the 
+`cbn-ajax-provider`. Use the latter if you need to specify custom arguments:
+
+@group cbn-form
+@element cbn-ajax-provider
+-->
+
+<!-- Imports -->
+<link rel="import" href="behavior.html">
+<link rel="import" href="../../iron-ajax/iron-ajax.html">
+
+<dom-module id="cbn-ajax-provider">
+	<template>
+		<content></content>
+	</template>
+</dom-module>
+
+<script>
+	(function() {
+		
+		Polymer({
+			is: 'cbn-ajax-provider',
+			
+			properties: {
+				
+				/**
+				 * If true, tells the data source element to automatically query the AJAX server when the query method 
+				 * is called.
+				 */
+				autoAjax: {
+					type: Boolean,
+					value: false
+				},
+				
+				/**
+				 * Specifies the name of the parameter to use for sending the query value to the AJAX request.
+				 * The server is supposed to only return relevant data. 
+				 * 
+				 * If enabled, an AJAX request will be generated each time the query method is called with a different 
+				 * value.
+				 * 
+				 * Set to empty string to disable sending an AJAX parameter with the user's query.
+				 */
+				ajaxParameter: {
+					type: String,
+					value: ''
+				},
+				
+				/**
+				 * The minimum interval between ajax queries (milliseconds). Used only if `autoAjax` is true.
+				 * 
+				 * It is used better in conjunction with local filtering (and set this to the timeout after which to 
+				 * re-fetch the data from server).
+				 */
+				ajaxInterval: {
+					type: Number,
+					value: 0
+				},
+				
+				/**
+				 * Ajax debounce interval (as an alternative to interval above).
+				 * Aggregates multiple queries and calls them after a finite amount of time (from the last query).
+				 */
+				ajaxDebounce: {
+					type: Number,
+					value: 0
+				},
+				
+				/**
+				 * Stores the last requested query string.
+				 */
+				lastQuery: {
+					type: String,
+					value: null,
+					readOnly: true
+				},
+				
+				/**
+				 * The reference to the iron-ajax used for the AJAX requests.
+				 */
+				ironAjax: {
+					type: Object,
+					observer: '_setAjaxElement'
+				}
+				
+			},
+			
+			behaviors: [ CbnDataProviderBehavior ],
+			
+			
+			// Private properties
+			
+			/**
+			 * Stores the time of the last request.
+			 */
+			_lastRequestTime: 0,
+			
+			/**
+			 * Will become true after the ajax data is loaded after the first query.
+			 */
+			_ajaxLoaded: false,
+			
+			
+			/**
+			 * Queries the provider for data.
+			 * 
+			 * If the supplied query is a string, the AJAX request will contain just the GET `ajaxParameter` set to 
+			 * this value.
+			 * If it is an object, it will be directly supplied as AJAX params map.
+			 * 
+			 * If the result is true, the data is already available using the `data` property. Otherwise, the 
+			 * `data-available` event will be fired as soon as the data is available.
+			 * 
+			 * @param {Object|String} [query]  The query to send to the server.
+			 * @return {Boolean} Returns true if the data is available right away, false if you need to wait for a 
+			 *                   `data-available` event.
+			 */
+			query: function(query) {
+				if (this.ironAjax) {
+					var curTime = (new Date()).getTime();
+					var requestIntervalExpired = !this._lastRequestTime || 
+						(curTime - this._lastRequestTime) >= this.ajaxInterval;
+					
+					/**
+					 * Whether to do an AJAX request or return the cached results.
+					 * @type {Boolean}
+					 */
+					var doRequest = !!this.autoAjax;
+					if (!this._ajaxLoaded) {
+						// no data available, do a request
+						doRequest = true;
+					} else if (this.ajaxParameter) {
+						// force reload if the query string changed or a timeout was set but expired
+						doRequest = (this.lastQuery != query) || (this.ajaxInterval && requestIntervalExpired);
+					}
+					
+					if (doRequest) {
+						if (requestIntervalExpired) {
+							// too much time has passed, issue a new AJAX request
+							if (this.ajaxDebounce) {
+								this.debounce('ajax-debounce', function() {
+									this.reload(query);
+								}, this.ajaxDebounce);
+							} else {
+								this.reload(query);
+							}
+							return false;
+							
+						} else {
+							// use the cached data
+							return true;
+						}
+						
+					} else {
+						return true;
+					}
+				}
+			},
+			
+			/**
+			 * Forces a query for the data from server.
+			 * 
+			 * You could also use the generateRequest() method on the iron-ajax element, but must manually set the 
+			 * parameters in that case.
+			 * 
+			 * @param {Object|String} query The query to send to the server.
+			 */
+			reload: function(query) {
+				if (!this.ironAjax) 
+					return false;
+				
+				//noinspection JSUnresolvedFunction
+				this._setLastQuery(query);
+				
+				if (this.ironAjax.lastRequest && !this.ironAjax.lastRequest.aborted)
+					this.ironAjax.lastRequest.abort();
+				
+				var optionsChanged = false;
+				if (this.ajaxParameter || (query && typeof query == 'object')) {
+					var params = {};
+					if (this.ajaxParameter && query && typeof query == 'string') {
+						if (this.ironAjax.params) {
+							params = JSON.parse(JSON.stringify(this.ironAjax.params)); 
+						}
+						params[this.ajaxParameter] = query;
+						
+					} else if (query && typeof query == 'object') {
+						for (var j in query) {
+							if (!query.hasOwnProperty(j)) continue;
+							params[j] = query[j];
+						}
+					} else if (this.ajaxParameter) {
+						params[this.ajaxParameter] = '';
+					}
+					this.ironAjax.params = params;
+					optionsChanged = true;
+				}
+				
+				this._lastRequestTime = (new Date()).getTime();
+				// let the iron-ajax component reload itself if `auto`
+				if (!this.ironAjax.auto || !optionsChanged) {
+					this.ironAjax.generateRequest();
+				}
+			},
+			
+			// Internal methods:
+			
+			/**
+			 * Called when the element is instantiated.
+			 */
+			created: function() {
+				this._ajaxResponse = this._ajaxResponse.bind(this);
+			},
+			
+			/**
+			 * Called when the element's light DOM children are fully accessible.
+			 */
+			attached: function() {
+				if (Polymer.dom(this).children.length) {
+					this._initCoreAjax();
+				} else {
+					this.async(function () {
+						this._initCoreAjax();
+					});
+				}
+			},
+			
+			/**
+			 * Finds and initializes the core-ajax child element, if any.
+			 * 
+			 * @private
+			 */
+			_initCoreAjax: function() {
+				if (!this.ironAjax) {
+					this.ironAjax = Polymer.dom(this).querySelector('iron-ajax');
+				}
+			},
+			
+			/**
+			 * Called to initialize the internal AJAX component.
+			 */
+			_setAjaxElement: function() {
+				if (this.ironAjax) {
+					this.ironAjax.addEventListener('response', /**@type {Function}*/ this._ajaxResponse);
+					
+					if (this.ironAjax.lastResponse) {
+						this._ajaxResponse(this.ironAjax.lastResponse);
+					}
+				}
+			},
+			
+			/**
+			 * Handles the ajax response.
+			 * 
+			 * @param {Object} event The event or response object.
+			 */
+			_ajaxResponse: function(event) {
+				var response = event;
+				if (event instanceof Event && event.detail) {
+					response = event.detail.response;
+				} // else, it's the ajax.lastResponse value
+				
+				if (typeof response != 'object') {
+					console.error('invalid response received' + (response+'').substring(0, 128));
+					return;
+				}
+				
+				this._ajaxLoaded = true;
+				//noinspection JSUnresolvedFunction
+				this._setData(response);
+				
+				this._dataAvailable();
+			}
+			
+		});
+		
+	})();
+	
+</script>

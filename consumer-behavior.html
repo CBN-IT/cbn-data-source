@@ -1,0 +1,170 @@
+<!--
+Definition file for the `CbnDataSource.ConsumerBehavior` utility behavior.
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+
+<script>
+	
+	(function(scope) {
+		scope = window.CbnDataSource = window.CbnDataSource || {};
+		
+		//noinspection JSUnusedGlobalSymbols
+		/**
+		 * 
+		 * You can use this behavior to use (consume from) a data source.
+		 * The data source needs to be bound using the dataSource property, which contains the selector of the data 
+		 * source element to use. It is first searched inside the user element and, if a `_searchScope` property is set, 
+		 * it queries it too.
+		 * 
+		 * When the data source is initialized, the `_dataSourceInitializedCallback` abstract method will be called to 
+		 * notify the user element. You can then begin to query it and get notified when data is available (via the 
+		 * `_dataSourceAvailableCallback`).
+		 * 
+		 * Example:
+		 * ```javascript
+		 * Polymer({
+		 *    is: 'my-element',
+		 *    
+		 *    behaviors: [ CbnForm.InputElement, CbnDataSource.ConsumerBehavior ],
+		 *    
+		 *    get _searchScope() { return this.parentForm; }
+		 *    
+		 *    _dataSourceInitializedCallback: function() {
+		 *       this._dataSource.query('giff me data');
+		 *    },
+		 *    
+		 *    _dataSourceAvailableCallback: function(event) {
+		 *       console.log('got data!', event.target.data);
+		 *    }
+		 *    
+		 * });
+		 * ```
+		 * 
+		 * @polymerBehavior
+		 */
+		scope.ConsumerBehavior = {
+			
+			properties: {
+				
+				/**
+				 * The selector or reference to a `cbn-data-source` element that supplies the available options.
+				 * 
+				 * The element is first searched inside the current element.
+				 * If a `_searchScope` property is defined, the element will also be searched inside it.
+				 */
+				dataSource: {
+					type: String,
+					observer: '_dataSourceChanged'
+				},
+				
+				/**
+				 * Stores the reference to the data source DOM element.
+				 * Available after the '_dataSourceChanged' callback.
+				 */
+				_dataSource: {
+					type: Object
+				}
+				
+			},
+			
+			// Protected API:
+			
+			/**
+			 * The search scope: a DOM node to search for the data source element into.
+			 * 
+			 * @namespace this._searchScope
+			 */
+			
+			/**
+			 * Called when the data is available (as result of an asynchronous query).
+			 * 
+			 * @type Function
+			 * @param {Event} event The DOM event object.
+			 */
+			_dataSourceAvailableCallback: function(event) { /* ABSTRACT */ },
+			
+			/**
+			 * Called after a new data source is set. Only called when a valid data source element has been supplied.
+			 * 
+			 * {@link #_dataSource} will contain the DOM reference to the data source element.
+			 */
+			_dataSourceInitializedCallback: function() { /* ABSTRACT */},
+			
+			
+			// Behavior Implementation (private methods)
+			
+			/**
+			 * An element instance was created.
+			 */
+			created: function() {
+				if (this._dataSourceAvailableCallback) {
+					this._dataSourceAvailableCallback = /**@type Function*/this._dataSourceAvailableCallback.bind(this);
+				}
+			},
+			
+			/**
+			 * Only when the element is attached to DOM we can start searching for the data source.
+			 */
+			attached: function() {
+				this.async(function() {
+					if (!this._dataSource) 
+						this._dataSourceChanged();
+				});
+			},
+			
+			/**
+			 * Observer for the `dataSource` property.
+			 * 
+			 * @param {String|Element} [dataSource] The new data source to initialize.
+			 */
+			_dataSourceChanged: function(dataSource) {
+				if (!dataSource) dataSource = /**@type {String|Element}*/(this.dataSource);
+				
+				// disable the current data source
+				if (this._dataSource) {
+					this._dataSource.removeEventListener('data-available', this._dataSourceAvailableCallback);
+					this._dataSource = null;
+				}
+				if (dataSource) {
+					this._dataSource = this._findDataSourceElement(dataSource);
+				}
+				
+				// initialize the data source element
+				if (this._dataSource) {
+					this._dataSource.addEventListener('data-available', this._dataSourceAvailableCallback);
+					
+					// fire the protected API callback
+					this._dataSourceInitializedCallback();
+				}
+			},
+			
+			/**
+			 * Searches for a data source element inside the current element and, if set, using the search scope.
+			 * 
+			 * @param {String|Element} selector The selector / DOM node of the datasource.
+			 * @return {Element|null} The DOM reference to the data source element, if found.
+			 */
+			_findDataSourceElement: function(selector) {
+				// search for a dataSource
+				if (typeof selector == 'string') {
+					// try within the element itself
+					var ds = Polymer.dom(this).querySelector(selector);
+					if (ds) return ds;
+					
+					if (!this._searchScope) return null;
+					
+					return Polymer.dom(this._searchScope).querySelector(selector);
+					
+				} else if (selector instanceof Element) {
+					return selector;
+				}
+				
+				return null;
+			}
+			
+		};
+		
+	})();
+	
+</script>

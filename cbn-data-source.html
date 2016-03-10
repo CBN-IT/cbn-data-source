@@ -1,37 +1,77 @@
 <!--
 `cbn-data-source` is a non-visual element that can provide data to form inputs (such as auto-completed text, select 
-inputs etc.).
+inputs etc.) or other elements.
+
+The element uses a service-oriented architecture which defines two separate components: 
+- the producer / data provider (e.g. `cbn-ajax-provider`);
+- the consumer (an user of the data source).
+
+The data is optionally chained to a `cbn-data-filter` element (if a valid `filterMode` value is specified). The filtered 
+data can be accessed after a query by using the `filteredData` property.
+
+Consumers
+=========
+
+The consumers have the `query` method, which requests new data from the provider, which it can optionally filter.
+
+If the data is available synchronously after the call, the `query` returns true and you can fetch the data from the 
+`data` / `filteredData` properties right away. 
+Otherwise, you must listen for the `data-available` event (e.g. in case of async providers such as AJAX).
+
+The query method accepts two parameters:
+
+- the query to send to the provider (not all providers accept it);
+- the value to filter by locally (if filterMode is set).
+
+
+Producers
+=========
 
 There are several methods for providing data to the element:
 
-1. Use the data property to provide the data as a JSON array (using Polymer bindings).
+1. Use the `data` attribute to provide the data as a JSON array (e.g. using Polymer data bindings). 
+You can also observe when the `queryValue` property changes (readonly) or the `query` event and manually set the data.
+
 Example: 
+```html
+<cbn-data-source id="datasource" query-value="{{ queryValue }}" data="{{ data }}"></cbn-data-source>
 ```
-<cbn-data-source id="datasource" data="[ { key: 1, value: 'one' } ]"></cbn-data-source>
+```javascript
+prototype: {
+	'properties': {
+		queryValue: {
+			type: String,
+			value: ''
+		}
+	}
+	'observers': [
+		'_queryChanged(queryValue)'
+	]
+	'_queryChanged': function(query) {
+		this.$.datasource.data = this._fetchData(query);
+	}
+}
 ```
 
-2. Insert a `core-ajax` element as child; it will be used each time the query method is called.
-Example: 
+2. By using a built-in or custom provider element that implements `CbnDataProviderBehavior`.
+
 ```
 <cbn-data-source id="datasource">
-	<core-ajax url="/get/data.json" handleAs="json"></core-ajax>
+	<my-custom-provider source="mine"></my-custom-provider>
 </cbn-data-source>
 ```
 
-3. Listen for the `cbn-data-query` event and setting the {@link #data} and/or (@link #filteredData) property.
-Example: 
+Built-in providers:
+ 
+- `cbn-ajax-provider`: uses an `iron-ajax` instance to fetch the data from server. A shorthand is available if you don't 
+need to configure the provider's parameters:
+
 ```
-this.$.datasource.addEventListener('cbn-data-query', function(event) {
-	var data = [];
-	// ... populate the data...
-	event.target.data = data;
-	// if you prevent the default action, make sure to fire a `cbn-data-available` event when the data is ready
-	event.preventDefault();
-	event.target.fire('cbn-data-available');
-});
+<cbn-data-source id="datasource">
+	<iron-ajax auto url="/get/data.json" handle-as="json"></iron-ajax>
+</cbn-data-source>
 ```
 
-You should only use 1 of the 3 methods enumerated above, otherwise the behavior is undefined.
 
 @group cbn-form
 @element cbn-data-source
@@ -39,305 +79,277 @@ You should only use 1 of the 3 methods enumerated above, otherwise the behavior 
 
 <!-- Imports -->
 <link rel="import" href="../polymer/polymer.html">
-<link rel="import" href="../core-ajax/core-ajax.html">
 <link rel="import" href="cbn-data-filter.html">
+<link rel="import" href="providers/ajax-provider.html">
 
-<polymer-element name="cbn-data-source">
+<dom-module id="cbn-data-source">
 	<template>
-		<cbn-data-filter id="filter" auto="false"
-						 data="{{data}}" filteredData="{{filteredData}}" 
-						 filterProperty="{{filterProperty}}" filterMode="{{filterMode}}"></cbn-data-filter>
 		
-		<content select="core-ajax"></content>
+		<cbn-data-filter id="filter" data="[[data]]" filtered-data="{{filteredData}}" 
+						 filter-property="[[filterProperty]]" filter-mode="[[filterMode]]"></cbn-data-filter>
+		
+		<content></content>
 		
 	</template>
-	
-	<script>
-		(function() {
+</dom-module>
+
+<script>
+	(function() {
+		window.CbnDataSource = window.CbnDataSource || {};
+		
+		Polymer({
+			is: 'cbn-data-source',
 			
-			Polymer('cbn-data-source', {
-				
-				publish: { // Published attributes: 
-					
-					/**
-					 * Provides external data to the data-source element.
-					 * If `core-ajax` is used, this will store/cache its results.
-					 * 
-					 * @type {Array}
-					 * @default []
-					 */
-					data: null, 
-					
-					/**
-					 * Returns the filtered data. 
-					 * You can use {@link #query} to specify the filtering query.
-					 * 
-					 * @type {Array}
-					 * @default []
-					 */
-					filteredData: null, 
-					
-					/**
-					 * Specify the property to filter a data item by.
-					 * Specify empty value if your data is a String list and you want to compare the items directly.
-					 * 
-					 * @type {String}
-					 * @default 'value'
-					 */
-					filterProperty: 'value', 
-					
-					/**
-					 * The local filtering mode to use. 
-					 * The filtered results are available at the {@link #filteredData} property.
-					 * 
-					 * Check {@link cbn-data-filter.html#filterMode} for all available modes.
-					 */
-					filterMode: '',
-					
-					/**
-					 * Specifies the parameter to use for specifying the query for the `core-ajax` request.
-					 * Set to empty string to disable specifying an AJAX parameter.
-					 * 
-					 * @type {String}
-					 * @default ''
-					 */
-					ajaxParameter: '',
-					
-					/**
-					 * The minimum interval between ajax queries (milliseconds). 
-					 * It is used better in conjunction with local filtering (and set this to the timeout after which to 
-					 * re-fetch the data from server).
-					 * 
-					 * Note: if this is set and both local filtering and `core-ajax` are used, the `cbn-data-available` 
-					 * will be fired regardless of whether a new request has been made or the locally cached data is used.
-					 * 
-					 * @type {Number}
-					 * @default 0
-					 */
-					ajaxInterval: 0
-					
-				}, 
-				
-				// Private properties
+			properties: { 
 				
 				/**
-				 * Caches the last query executed.
+				 * The currently stored data.
 				 */
-				_lastQuery: '',
+				data: {
+					type: Array,
+					value: function () { return []; },
+					notify: true
+				},
 				
 				/**
-				 * Stores the time of the last request.
-				 */
-				_lastRequestTime: 0,
-				
-				/**
-				 * Whether the core-ajax 'auto' attribute was true (i.e. the user wants the ajax reload to run automatically).
-				 */
-				_autoAjax: false,
-				
-				/**
-				 * Will become true after the ajax data is loaded after the first query.
-				 */
-				_ajaxLoaded: false,
-				
-				/**
-				 * Whether there is an AJAX request ongoing.
-				 */
-				_ajaxInProgress: false,
-				
-				
-				// Events: 
-				
-				/**
-				 * Emits an event to query for data.
+				 * Stores the last query requested by the consumer. 
+				 * Useful for observing when a new query is requested.
 				 * 
-				 * The event details object has the 'query' member, which specifies the query that has been 
-				 * made on the data.
+				 * Note: This property is readonly. If you want to change it, use the {@link #query} method.
 				 * 
-				 * You can cancel this event by calling {@link Event#preventDefault}. If you do that, you can set a 
-				 * return for the {@link #query} method by using the `returnStatus` custom event property.
-				 * 
-				 * @event cbn-data-query
+				 * Note2: this is set synchronously to the `query` call. In case of asynchronous providers, the data 
+				 * might not be available when the notification triggers. Listen for the `cbn-data-available` in this 
+				 * case.
 				 */
+				queryValue: {
+					type: String,
+					value: '',
+					notify: true,
+					readOnly: true
+				},
 				
 				/**
-				 * Emits an event when new data is available. 
+				 * The local filtering mode to use. Use empty value to disable filtering.
 				 * 
-				 * It is the follow-up event to the {@link #query} method.
-				 * You must check the result of the {@link #query} method in order to know if this event will be fired.
+				 * The filtered results are available via the `filtered-data` attribute.
 				 * 
-				 * @event cbn-data-available
+				 * Check `cbn-data-filter` for all available modes.
 				 */
-				
-				// Public API methods:
+				filterMode: {
+					type: String,
+					value: '',
+					notify: true
+				},
 				
 				/**
-				 * Queries the element for (optionally, filtered) data.
-				 * 
-				 * If the result is true, the data is already available using the {@link #data} and {@link #filteredData} 
-				 * properties. Otherwise, the `cbn-data-available` event will be fired as soon as the data is available.
-				 * 
-				 * @param {String} query The query value (to filter by).
-				 * @return {Boolean} Returns true if the data is available right away, false if you need to wait for a 
-				 *                   `cbn-data-available` event; in case the `cbn-data-query` event in canceled, the 
-				 *                   return status is provided by the event handler.
+				 * Specify the property to filter a data item by.
+				 * Specify empty value if your data is a String list and you want to compare the items directly.
 				 */
-				query: function(query) {
-					this._lastQuery = query;
+				filterProperty: {
+					type: String,
+					value: 'value',
+					notify: true
+				},
+				
+				/**
+				 * Stores the current filter value that represents the filtered data.
+				 */
+				filterValue: {
+					type: String,
+					value: '',
+					notify: true,
+					readOnly: true
+				},
+				
+				/**
+				 * Returns the filtered data. 
+				 * You can use {@link #query} to specify the filtering query.
+				 */
+				filteredData: {
+					type: Array,
+					notify: true,
+					value: function () { return []; }
+				},
+				
+				/**
+				 * Stores reference to the data provider element.
+				 * Initialized after the element is attached.
+				 */
+				provider: {
+					type: Object,
+					readOnly: true
+				}
+				
+			},
+			
+			observers: [
+				'_dataChanged(data.*)'
+			],
+			
+			/**
+			 * Whether the data property is being changed internally.
+			 */
+			_dataInternallyChanged: false,
+			
+			/**
+			 * Event sent when the query method is used. Cancellable.
+			 * 
+			 * @event query
+			 */
+			
+			/**
+			 * Event sent when the data is changed externally (i.e. by the user).
+			 * 
+			 * Providers can also emit these types of events when data is changed asynchronously.
+			 * 
+			 * @event data-available
+			 */
+			
+			
+			// Public API methods:
+			
+			/**
+			 * Queries the element for data.
+			 * 
+			 * If local filtering is enabled, the 
+			 * 
+			 * If the result is true, the data is already available using the {@link #data} and {@link #filteredData} 
+			 * properties. Otherwise, the `data-available` event will be fired as soon as the data is available.
+			 * 
+			 * @param {String} [query]  The main query value. If undefined, the last supplied value will be used.
+			 * @param {String} [filter] The value to filter the results by. If unspecified, the query value will be used.
+			 * @return {Boolean} Returns true if the data is available right away, false if you need to wait for a 
+			 *                   `data-available` event from the provider; in case the `query` event in canceled, the 
+			 *                   return status is provided by the event handler.
+			 */
+			query: function(query, filter) {
+				/** 
+				 * @var {Event} ev
+				 * @member {Boolean} ev.returnStatus
+				 */
+				var ev;
+				ev = this.fire('query', {
+					query: query,
+					filter: filter
 					
-					/** @var {Event} ev */
-					/** @member {Boolean} ev.returnStatus */
-					var ev;
-					ev = this.fire('cbn-data-query', {
-						query: query
-					}, null, false, true); // doesn't bubble, cancellable
-					if (ev.defaultPrevented) {
-						return ev.returnStatus;
-					}
+				}, { bubbles: false, cancelable: true });
+				if (ev.defaultPrevented) {
+					return ev.returnStatus;
+				}
+				
+				if (query === undefined) {
+					query = /**@type {String}*/this.queryValue;
+				}
+				if (filter === undefined) {
+					filter = query;
+				}
+				
+				if (this.provider) {
+					var result = this.provider.query(query);
+					//noinspection JSUnresolvedFunction
+					this._setQueryValue(query);
 					
-					if (this._ajax) {
-						if (this._ajaxInProgress) {
-							return false; // ajax in progress, data not yet available
-							
-						} else if (this._autoAjax || !this._ajaxLoaded) {
-							var curTime = (new Date()).getTime();
-							if (!this._lastRequestTime || (curTime - this._lastRequestTime) >= this.ajaxInterval) {
-								// too much time has passed, issue a new AJAX request
-								var xhr = this.ajaxReload(query);
-								xhr._isDataQuery = true;
-								xhr._dataQuery = query;
-								return false;
-								
-							} else {
-								// use the cached data and, optionally, filter the results
-								this._filter(query, true);
-								return true;
-							}
-							
-						} else {
-							this._filter(query, true);
-							return true;
+					if (result) {
+						this._dataInternallyChanged = true;
+						try {
+							this.data = this.provider.data;
+						} finally {
+							this._dataInternallyChanged = false;
 						}
-						
+						this.filter(filter);
 					} else {
-						this._filter(query, true);
-						return true;
-					}
-				},
-				
-				/**
-				 * Requests the `core-ajax` component to reload the data.
-				 */
-				ajaxReload: function(query) {
-					if (!this._ajax) 
-						return false;
-					this._ajax.abort();
-					if (this.ajaxParameter) {
-						if (!this._ajax.params) 
-							this._ajax.params = {};
-						this._ajax.params[this.ajaxParameter] = query;
+						//noinspection JSUnresolvedFunction
+						this._setFilterValue(filter);
 					}
 					
-					this._ajaxInProgress = true;
-					this._lastRequestTime = (new Date()).getTime();
-					return this._ajax.go();
-				},
-				
-				// Internal methods:
-				
-				/**
-				 * Fires when the element is created. Used to initialize its attributes.
-				 */
-				created: function () {
-					if (!this.data) 
-						this.data = [];
-					if (!this.filteredData) 
-						this.filteredData = [];
-				},
-				
-				/**
-				 * Called when the element's light DOM children are fully accessible.
-				 */
-				domReady: function() {
-					this._initCoreAjax();
-				},
-				
-				/**
-				 * Called when the data property is changed.
-				 */
-				dataChanged: function() {
-					if (this._ajax) 
-						return;
-					this.query(this._lastQuery);
-				},
-				
-				/**
-				 * Filters the data, retaining only the items that pass the query condition.
-				 * The {@link #filteredData} property will be set with the results.
-				 * 
-				 * @param {String} query The value to filter by.
-				 * @param {Boolean} [skipEvent] Skip sending a data-available event.
-				 */
-				_filter: function(query, skipEvent) {
-					this.$.filter.filter(null, query);
-					Platform.performMicrotaskCheckpoint();
-					if (!skipEvent)
-						this._dataAvailable();
-				},
-				
-				/**
-				 * Fires the data-available event to notify the listeners their query was completed.
-				 */
-				_dataAvailable: function() {
-					this.fire('cbn-data-available');
-				},
-				
-				/**
-				 * Finds and initializes the core-ajax child element, if any.
-				 * 
-				 * @private
-				 */
-				_initCoreAjax: function() {
-					this._ajax = this.querySelector('core-ajax');
-					if (this._ajax) {
-						this._ajax.addEventListener('core-response', this._ajaxResponse.bind(this));
-						this._autoAjax = this._ajax.auto;
-						this._ajax.auto = false;
-					}
-				},
-				
-				/**
-				 * Handles the ajax response.
-				 * 
-				 * @private
-				 * @param event
-				 */
-				_ajaxResponse: function(event) {
-					this._ajaxInProgress = false;
-					var response = event.detail.response;
+					return result;
 					
-					if (typeof response != 'object') {
-						console.error('invalid response received' + (event.detail.response+'').substring(0, 128));
-						return;
-					}
-					
-					this._ajaxLoaded = true;
-					this.data = event.detail.response;
-					
-					if (event.detail.xhr._isDataQuery) {
-						// locally filter the response
-						this._filter(event.detail.xhr._dataQuery);
-						
-					} else {
-						// use the last filter
-						this._filter(this._lastQuery);
+				} else {
+					//noinspection JSUnresolvedFunction
+					this._setQueryValue(query);
+					this.filter(filter);
+					return true;
+				}
+			},
+			
+			/**
+			 * Filters the current data array (i.e. without issuing a new query), retaining only the items that pass the 
+			 * query condition. The results will be stored in {@link #filteredData}.
+			 * 
+			 * Also updates {@link #filterValue}.
+			 * 
+			 * @param {String} filter The value to filter by.
+			 */
+			filter: function(filter) {
+				//noinspection JSUnresolvedFunction
+				this._setFilterValue(filter);
+				this.$.filter.filter(null, filter);
+			},
+			
+			
+			// Internal methods:
+			
+			/**
+			 * Called when the element's light DOM children are fully accessible.
+			 */
+			attached: function() {
+				if (Polymer.dom(this).children.length) {
+					this._initDataProvider();
+				} else {
+					this.async(function () {
+						this._initDataProvider();
+					});
+				}
+			},
+			
+			/**
+			 * Finds and initializes the data provider element, if any.
+			 */
+			_initDataProvider: function() {
+				//noinspection JSUnresolvedFunction
+				this._setProvider(Polymer.dom(this).querySelector('[is-data-provider]'));
+				if (!this.provider) {
+					var ironAjax = Polymer.dom(this).querySelector('iron-ajax');
+					if (ironAjax) {
+						//noinspection JSUnresolvedFunction
+						this._setProvider(document.createElement('cbn-ajax-provider'));
+						this.provider.ironAjax = ironAjax;
+						Polymer.dom(this).appendChild(this.provider);
 					}
 				}
 				
-			});
+				if (this.provider) {
+					this.provider.addEventListener('data-available',
+						/** @type {Function} */this._providerDataAvailable.bind(this));
+					
+				}
+			},
 			
-		})();
+			/**
+			 * Called when the provider data is changed.
+			 */
+			_providerDataAvailable: function() {
+				this._dataInternallyChanged = true;
+				try {
+					this.data = this.provider.data;
+				} finally {
+					this._dataInternallyChanged = false;
+				}
+				this.filter(/**@type {String}*/(this.filterValue));
+			},
+			
+			/**
+			 * Handle user data changes.
+			 */
+			_dataChanged: function() {
+				if (this._dataInternallyChanged) return;
+				
+				this.filter(/**@type {String}*/(this.filterValue));
+				this.fire('data-available');
+			}
+			
+		});
 		
-	</script>
+	})();
 	
-</polymer-element>
+</script>

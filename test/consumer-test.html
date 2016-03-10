@@ -1,0 +1,118 @@
+<!doctype html>
+<!--suppress HtmlUnknownTag -->
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+	
+	<script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+	<script src="../../web-component-tester/browser.js"></script>
+	
+	<script src="../../test-fixture/test-fixture-mocha.js"></script>
+	<link rel="import" href="../../test-fixture/test-fixture.html" />
+	
+	<!-- Elements to be tested -->
+	<link rel="import" href="../cbn-data-source.html">
+	<link rel="import" href="mock/mock-consumer.html">
+	<link rel="import" href="../../iron-ajax/iron-ajax.html">
+	
+</head>
+<body>
+
+<test-fixture id="consumer1">
+	<template is="dom-template">
+		<mock-data-source-consumer data-source="#datasource1">
+			<cbn-data-source id="datasource1" filter-mode="contains-ci">
+				<iron-ajax url="/ajax-test.json" handle-as="json"></iron-ajax>
+			</cbn-data-source>
+		</mock-data-source-consumer>
+	</template>
+</test-fixture>
+
+<test-fixture id="searchScopedContainer">
+	<template is="dom-template">
+		<div>
+			<cbn-data-source id="parentDS" filter-mode="contains-ci">
+				<iron-ajax url="/ajax-test.json" handle-as="json"></iron-ajax>
+			</cbn-data-source>
+			<mock-data-source-consumer id="scopedCS" data-source="#parentDS"></mock-data-source-consumer>
+		</div>
+	</template>
+</test-fixture>
+
+<test-fixture id="manualContainer">
+	<template is="dom-template">
+		<div>
+			<cbn-data-source id="manualDS" filter-mode="contains-ci">
+				<iron-ajax url="/ajax-test.json" handle-as="json"></iron-ajax>
+			</cbn-data-source>
+			<mock-data-source-consumer id="manualCS" data-source="#parentDS"></mock-data-source-consumer>
+		</div>
+	</template>
+</test-fixture>
+
+<script>
+	
+	suite('consumer behavior', function () {
+		var f;
+		
+		setup(function () {
+			this.server = sinon.fakeServer.create();
+			this.server.respondWith("GET", /^\/ajax-test\.json.*/,
+				[200, {"Content-Type": "application/json"},
+					'[\
+						{ "key":"1", "value": "First" },\
+						{ "key":"2", "value": "Second" },\
+						{ "key":"3", "value": "Third" }\
+					]']);
+		});
+		
+		teardown(function () {
+			this.server.restore();
+		});
+		
+		test('inner child', function (done) {
+			f = fixture('consumer1');
+			
+			assert.ok(f.dataSourceInitialized, '_dataSourceInitializedCallback called');
+			assert.ok(f._dataSource, '_dataSource is set');
+			
+			var _dataSourceAvailableCallback = sinon.spy();
+			f.addEventListener('test-data-source-available', _dataSourceAvailableCallback);
+			
+			assert.ok(f.query('') === false, 'dataSource query works'); // should return false, the data is not yet available
+			this.server.respond();
+			
+			setTimeout(function(){
+				assert.equal(_dataSourceAvailableCallback.callCount, 1, '_dataSourceAvailableCallback called');
+				done();
+			}, 1);
+		});
+		
+		test('search scope', function () {
+			f = fixture('searchScopedContainer');
+			var consumer = f.querySelector('#scopedCS');
+			
+			assert.ok(consumer.dataSourceInitialized, '_dataSourceInitializedCallback called');
+			assert.ok(consumer._dataSource, '_dataSource is set');
+		});
+		
+		test('manual data source', function () {
+			f = fixture('manualContainer');
+			var consumer = f.querySelector('#manualCS');
+			var dataSource = f.querySelector('#manualDS');
+			
+			assert.ok(!consumer.dataSourceInitialized, 'data source was not initialized yet');
+			
+			consumer.dataSource = dataSource;
+			
+			assert.ok(consumer.dataSourceInitialized, '_dataSourceInitializedCallback called');
+			assert.ok(consumer._dataSource, '_dataSource is set');
+		});
+		
+	});
+	
+</script>
+
+</body>
+</html>

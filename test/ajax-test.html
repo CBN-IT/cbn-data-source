@@ -1,143 +1,213 @@
 <!doctype html>
+<!--suppress HtmlUnknownTag -->
 <html>
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
 	
-	<script src="../../webcomponentsjs/webcomponents.min.js"></script>
+	<script src="../../webcomponentsjs/webcomponents-lite.js"></script>
 	<script src="../../web-component-tester/browser.js"></script>
+	
+	<script src="../../test-fixture/test-fixture-mocha.js"></script>
+	<link rel="import" href="../../test-fixture/test-fixture.html" />
 	
 	<!-- Elements to be tested -->
 	<link rel="import" href="../cbn-data-source.html">
+	<link rel="import" href="../../iron-ajax/iron-ajax.html">
 	
 </head>
 <body>
 
-<template is="auto-binding">
-	
-	<cbn-data-source id="ajaxSource1">
-		<core-ajax auto url="/ajax-test.json" handleAs="json"></core-ajax>
-	</cbn-data-source>
-	
-	<cbn-data-source id="ajaxSource2" filtermode="exact-ci" ajaxparameter="query">
-		<core-ajax auto url="/ajax-test.json" params='{"first":"1"}' handleAs="json"></core-ajax>
-	</cbn-data-source>
-	
-	<cbn-data-source id="ajaxSource3" filtermode="begins-ci">
-		<core-ajax url="/ajax-test.json" handleAs="json"></core-ajax>
-	</cbn-data-source>
-	
-</template>
+<test-fixture id="simpleAjaxSource">
+	<template>
+		<cbn-data-source>
+			<iron-ajax url="/ajax-test.json" handle-as="json"></iron-ajax>
+		</cbn-data-source>
+	</template>
+</test-fixture>
+
+<test-fixture id="filteredAjaxSource">
+	<template>
+		<cbn-data-source filter-mode="exact-ci">
+			<cbn-ajax-provider ajax-parameter="query">
+				<iron-ajax url="/ajax-test.json" params='{"first":"1"}' handle-as="json"></iron-ajax>
+			</cbn-ajax-provider>
+		</cbn-data-source>
+	</template>
+</test-fixture>
+
+<test-fixture id="advAjaxSource">
+	<template>
+		<cbn-data-source>
+			<cbn-ajax-provider auto-ajax ajax-interval="2000">
+				<iron-ajax url="/ajax-test.json" handle-as="json"></iron-ajax>
+			</cbn-ajax-provider>
+		</cbn-data-source>
+	</template>
+</test-fixture>
 
 <script>
 	
-	var tpl;
-	var ajaxSource1, ajaxSource2, ajaxSource3;
-	
-	// Test Data:
-	var expectedData1 = [
-		{ "key":"1", "value": "First" },
-		{ "key":"2", "value": "Second" },
-		{ "key":"3", "value": "Third" },
-		{ "key":"4", "value": "Four" },
-		{ "key":"5", "value": "Five" },
-		{ "key":"6", "value": "Six" },
-		{ "key":"7", "value": "Seven" }
-	];
-	
-	// Test Data:
-	var expectedData2 = [
-		{ "key":"1", "value": "First" }
-	];
-	
-	tpl = document.querySelector('template[is="auto-binding"]');
-	
-	// Test routines:
-	
-	// Set-up the test suite
-	suiteSetup(function(done){
-		// hack for poly-filled elements, need to re-fetch the proxied element
-		ajaxSource1 = document.querySelector('#ajaxSource1');
-		ajaxSource2 = document.querySelector('#ajaxSource2');
-		ajaxSource3 = document.querySelector('#ajaxSource3');
-		tpl = document.querySelector('template[is="auto-binding"]');
+	suite('ajax data source', function () {
+		var f;
 		
-		// addEventListener with automatic cleanup at the end of a test
-		this._eventListeners = [];
-		this.addEventListener = function (obj, event, callback) {
-			obj.addEventListener(event, callback);
-			this._eventListeners.push( [ obj, event, callback ] );
-		};
+		// Test Data:
+		var expectedData1 = [
+			{ "key":"1", "value": "First" },
+			{ "key":"2", "value": "Second" },
+			{ "key":"3", "value": "Third" },
+			{ "key":"4", "value": "Four" },
+			{ "key":"5", "value": "Five" },
+			{ "key":"6", "value": "Six" },
+			{ "key":"7", "value": "Seven" }
+		];
 		
-		this.cleanupEventListeners = function() {
-			for (var i=0; i<this._eventListeners.length; i++) {
-				var listener = this._eventListeners[i];
-				var obj = listener[0], event = listener[1], callback = listener[2];
-				obj.removeEventListener(event, callback);
-			}
-			this._eventListeners = [];
-		};
+		// Test Data:
+		var expectedData2 = [
+			{ "key":"1", "value": "First" }
+		];
+		var expectedData2_2 = [
+			{ "key":"2", "value": "Second" }
+		];
 		
-		flush(done);
-	});
-	
-	setup(function(){
-		this.server = sinon.fakeServer.create();
-		this.server.respondWith("GET", /^\/ajax-test\.json.*/,
-				[200, { "Content-Type": "application/json" },
-				 '[\
-				 	{ "key":"1", "value": "First" },\
-				 	{ "key":"2", "value": "Second" },\
-				 	{ "key":"3", "value": "Third" },\
-				 	{ "key":"4", "value": "Four" },\
-				 	{ "key":"5", "value": "Five" },\
-				 	{ "key":"6", "value": "Six" },\
-				 	{ "key":"7", "value": "Seven" }\
-				 ]']);
-	});
-	
-	teardown(function() {
-		this.server.restore();
-		this.cleanupEventListeners();
-	});
-	
-	test('ajax request', function(done) {
-		this.addEventListener(ajaxSource1, 'cbn-data-available', function() {
-			flush(function(){
-				assert.deepEqual(ajaxSource1.data, expectedData1, 'ajax results');
-				done();
-			});
+		setup(function () {
+			this.server = sinon.fakeServer.create();
+			this.server.respondWith("GET", /^\/ajax-test\.json.*/,
+				[200, {"Content-Type": "application/json"},
+					'[\
+						{ "key":"1", "value": "First" },\
+						{ "key":"2", "value": "Second" },\
+						{ "key":"3", "value": "Third" },\
+						{ "key":"4", "value": "Four" },\
+						{ "key":"5", "value": "Five" },\
+						{ "key":"6", "value": "Six" },\
+						{ "key":"7", "value": "Seven" }\
+					]']);
+			this.clock = null;
 		});
-		ajaxSource1.query();
-		this.server.respond();
-	});
-	
-	test('ajax with local filtering', function(done) {
-		this.addEventListener(ajaxSource2, 'cbn-data-available', function() {
-			flush(function(){
-				assert.deepEqual(ajaxSource2.filteredData, expectedData2, 'ajax results');
-				done();
-			});
+		
+		teardown(function () {
+			this.server.restore();
+			if (this.clock)
+				this.clock.restore();
 		});
-		assert.notOk(ajaxSource2.query("first"), 'data not available');
-		this.server.respond();
-	});
-	
-	test('ajax with no auto', function() {
-		var dataAvailable = sinon.spy();
-		this.addEventListener(ajaxSource3, 'cbn-data-available', dataAvailable);
 		
-		assert.notOk(ajaxSource3.query("first"), 'data not available');
-		assert.notOk(ajaxSource3.query("second"), 'data still not available');
-		assert.notOk(ajaxSource3.query("third"), 'what did you expect, for data to be available now?');
-		this.server.respond();
+		test('simple ajax request', function(done) {
+			f = fixture('simpleAjaxSource');
+			
+			assert.ok(f.provider, 'built-in provider');
+			assert.ok(f.provider.ironAjax, 'built-in provider iron-ajax');
+			
+			var dataAvailable = sinon.spy();
+			
+			f.addEventListener('data-available', dataAvailable);
+			
+			assert.notOk(f.query(), 'data availability on query'); // data not available
+			this.server.respond();
+			
+			setTimeout(function(){
+				assert.equal(dataAvailable.callCount, 1, 'data-available fired');
+				assert.deepEqual(f.data, expectedData1, 'ajax results');
+				done();
+			}, 1);
+		});
 		
-		assert.ok(ajaxSource3.query("another"), 'we\'ve got data!');
-		ajaxSource3.querySelector('core-ajax').go();
-		assert.ok(ajaxSource3.query("another"), 'data is cached');
-		this.server.respond();
+		test('ajax with query and filtering', function(done) {
+			f = fixture('filteredAjaxSource');
+			
+			var dataAvailable = sinon.spy();
+			f.addEventListener('data-available', dataAvailable);
+			
+			assert.notOk(f.query("first"), 'data availability on query');
+			assert.ok(this.server.requests.length, 'AJAX request made');
+			assert.equal(this.server.requests[0].url, "/ajax-test.json?first=1&query=first", 'request URL with query and params');
+			
+			this.server.respond();
+			
+			setTimeout(function () {
+				assert.equal(dataAvailable.callCount, 1, 'data-available fired');
+				assert.deepEqual(f.filteredData, expectedData2, 'ajax results');
+				
+				// subsequent queries won't generate requests unless `autoAjax` is true
+				assert.ok(f.query(), 'data available from now on');
+				done();
+			}, 1);
+		});
 		
-		assert.equal(dataAvailable.callCount, 2, 'cbn-data-available called twice');
+		test('advanced parameters query', function (done) {
+			f = fixture('simpleAjaxSource');
+			
+			var dataAvailable = sinon.spy();
+			f.addEventListener('data-available', dataAvailable);
+			
+			assert.notOk(f.query( { hello: 'world', value: 'ye' } ), 'data not cached');
+			assert.ok(this.server.requests.length, 'AJAX request made');
+			assert.equal(this.server.requests[0].url, "/ajax-test.json?hello=world&value=ye", 'request URL with object query');
+			
+			this.server.respond();
+			
+			setTimeout(function () {
+				assert.equal(dataAvailable.callCount, 1, 'data-available fired');
+				assert.deepEqual(f.filteredData, expectedData1, 'ajax results');
+				done();
+			}, 1);
+		});
+		
+		test('ajax query change triggers a reload', function(done) {
+			f = fixture('filteredAjaxSource');
+			
+			var dataAvailable = sinon.spy();
+			f.addEventListener('data-available', dataAvailable);
+			
+			assert.notOk(f.query("first"), 'first query');
+			assert.ok(this.server.requests.length, 'AJAX request made');
+			assert.equal(this.server.requests[0].url, "/ajax-test.json?first=1&query=first", 'first request URL');
+			
+			this.server.respond();
+			
+			assert.notOk(f.query("second"), 'second query');
+			assert.ok(this.server.requests.length == 2, 'AJAX request made');
+			assert.equal(this.server.requests[1].url, "/ajax-test.json?first=1&query=second", '2nd request URL');
+			
+			this.server.respond();
+			
+			setTimeout(function () {
+				assert.equal(dataAvailable.callCount, 2, 'data-available fired');
+				assert.deepEqual(f.filteredData, expectedData2_2, 'ajax results');
+				
+				// subsequent queries won't generate requests unless `autoAjax` is true
+				assert.ok(f.query(), 'data available from now on');
+				done();
+			}, 1);
+		});
+		
+		
+		test('automatic ajax query with interval', function(done) {
+			f = fixture('advAjaxSource');
+			
+			var realSetTimeout = window.setTimeout;
+			this.clock = sinon.useFakeTimers(1);
+			
+			var dataAvailable = sinon.spy();
+			f.addEventListener('cbn-data-available', dataAvailable);
+			
+			assert.notOk(f.query(), 'data not available');
+			assert.ok(this.server.requests.length == 1, 'AJAX request made');
+			this.server.respond();
+			
+			realSetTimeout(function () {
+				assert.deepEqual(f.data, expectedData1, 'ajax results');
+				assert.ok(f.query(), 'data is cached');
+				
+				this.clock.tick(1010);
+				assert.ok(!f.query(), 'timeout expired, new request pending');
+				
+				done();
+			}.bind(this), 0);
+			
+			this.clock.tick(1000);
+		});
+		
 	});
 	
 </script>

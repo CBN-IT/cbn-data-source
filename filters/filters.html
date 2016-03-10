@@ -1,0 +1,41 @@
+<script>
+	(function(scope) {
+		scope = window.CbnDataSource = window.CbnDataSource || {};
+		
+		/**
+		 * A map with functions to use for filtering.
+		 */
+		scope.filterModes = {
+			'exact': function(value, query) {
+				if (!value) return false;
+				return (value == query);
+			},
+			'exact-ci': function(value, query) {
+				if (!value) return false;
+				return ((value + '').toLowerCase() == query.toLowerCase());
+			},
+			'strict': function(value, query) {
+				return (value === query);
+			},
+			'begins': function(value, query) {
+				if (!value) return false;
+				return ((value + '').indexOf(query) == 0);
+			},
+			'begins-ci': function(value, query) {
+				if (!value) return false;
+				return ((value + '').toLowerCase().indexOf(query.toLowerCase()) == 0);
+			},
+			'contains': function(value, query) {
+				if (!value) return false;
+				return ((value + '').indexOf(query) >= 0);
+			},
+			'contains-ci': function(value, query) {
+				if (!value) return false;
+				return ((value + '').toLowerCase().indexOf(query.toLowerCase()) >= 0);
+			}
+		};
+		
+	})();
+</script>
+
+<script src="contains-cid.js"></script>

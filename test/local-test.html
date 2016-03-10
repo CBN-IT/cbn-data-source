@@ -1,11 +1,15 @@
 <!doctype html>
+<!--suppress HtmlUnknownTag -->
 <html>
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
 	
-	<script src="../../webcomponentsjs/webcomponents.min.js"></script>
+	<script src="../../webcomponentsjs/webcomponents-lite.js"></script>
 	<script src="../../web-component-tester/browser.js"></script>
+	
+	<script src="../../test-fixture/test-fixture-mocha.js"></script>
+	<link rel="import" href="../../test-fixture/test-fixture.html" />
 	
 	<!-- Elements to be tested -->
 	<link rel="import" href="../cbn-data-source.html">
@@ -13,115 +17,99 @@
 </head>
 <body>
 
-<template is="auto-binding">
-	
-	<cbn-data-source id="datasource1" data='[
-		{ "key":"1", "value": "First" }, 
-		{ "key":"2", "value": "Second" }, 
-		{ "key":"3", "value": "Third" }]'></cbn-data-source>
-	
-	<cbn-data-source id="datasource2" filtermode="contains-ci" 
-					 data="{{testData2}}"></cbn-data-source>
-	
-</template>
+<test-fixture id="datasource1">
+	<template>
+		<cbn-data-source data='[
+			{ "key":"1", "value": "First" }, 
+			{ "key":"2", "value": "Second" }, 
+			{ "key":"3", "value": "Third" }]'></cbn-data-source>
+	</template>
+</test-fixture>
+
+<test-fixture id="datasource2">
+	<template is="dom-template">
+		<cbn-data-source filter-mode="contains-ci" data="{{testData}}"></cbn-data-source>
+	</template>
+</test-fixture>
 
 <script>
 	
-	var tpl;
-	var datasource1, datasource2;
-	
-	// Test Data:
-	var testData1 = [
-		{ "key":"1", "value": "First" }, 
-		{ "key":"2", "value": "Second" }, 
-		{ "key":"3", "value": "Third" }
-	];
-	
-	var testData2 = [
-		{ "key":"4", "value": "Four" },
-		{ "key":"5", "value": "Five" },
-		{ "key":"6", "value": "Six" },
-		{ "key":"7", "value": "Seven" }
-	];
-	
-	var test2ExpectedData = [
-		{ "key":"6", "value": "Six" },
-		{ "key":"7", "value": "Seven" }
-	];
-	
-	tpl = document.querySelector('template[is="auto-binding"]');
-	tpl.testData2 = testData2;
-	
-	// Test routines:
-	
-	// Set-up the test suite
-	suiteSetup(function(done){
-		// hack for poly-filled elements, need to re-fetch the proxied element
-		datasource1 = document.querySelector('#datasource1');
-		datasource2 = document.querySelector('#datasource2');
-		tpl = document.querySelector('template[is="auto-binding"]');
+	suite('local data source', function () {
+		var f;
 		
-		// addEventListener with automatic cleanup at the end of a test
-		this._eventListeners = [];
-		this.addEventListener = function (obj, event, callback) {
-			obj.addEventListener(event, callback);
-			this._eventListeners.push( [ obj, event, callback ] );
-		};
+		// Test Data:
+		var testData1 = [
+			{"key": "1", "value": "First"},
+			{"key": "2", "value": "Second"},
+			{"key": "3", "value": "Third"}
+		];
 		
-		this.cleanupEventListeners = function() {
-			for (var i=0; i<this._eventListeners.length; i++) {
-				var listener = this._eventListeners[i];
-				var obj = listener[0], event = listener[1], callback = listener[2];
-				obj.removeEventListener(event, callback);
-			}
-			this._eventListeners = [];
-		};
+		var testData2 = [
+			{"key": "4", "value": "Four"},
+			{"key": "5", "value": "Five"},
+			{"key": "6", "value": "Six"},
+			{"key": "7", "value": "Seven"}
+		];
 		
-		flush(done);
-	});
-	
-	setup(function(){
-		// nothing here
-	});
-	
-	teardown(function() {
-		this.cleanupEventListeners();
-	});
-	
-	test('no filtering', function(done) {
-		var queryHandler = sinon.spy();
-		var availableHandler = sinon.spy();
+		var testData3 = [
+			{"key": "3", "value": "Third"}
+		];
 		
-		this.addEventListener(datasource1, 'cbn-data-query', queryHandler);
-		this.addEventListener(datasource1, 'cbn-data-available', availableHandler);
+		var test2ExpectedData = [
+			{"key": "6", "value": "Six"},
+			{"key": "7", "value": "Seven"}
+		];
 		
-		assert.ok(datasource1.query()); // should return true, the data is available right away
-		assert(queryHandler.called,'cbn-data-query was fired');
-		
-		flush(function() {
-			assert(availableHandler.notCalled ,'cbn-data-available wasn\'t fired');
-			assert.deepEqual(datasource1.data, testData1, 'data 1');
-			done();
+		test('no filtering', function () {
+			f = fixture('datasource1');
+			
+			var queryHandler = sinon.spy();
+			var availableHandler = sinon.spy();
+			
+			f.addEventListener('query', queryHandler);
+			f.addEventListener('data-available', availableHandler);
+			
+			assert.ok(f.query()); // should return true, the data is available right away
+			assert(queryHandler.called, 'query event was fired');
+			
+			assert(availableHandler.notCalled, 'data-available was not fired');
+			assert.deepEqual(f.data, testData1, 'data value');
 		});
-	});
-	
-	test('local filtering (contains mode)', function(done) {
-		var queryHandler = sinon.spy();
-		var availableHandler = sinon.spy();
 		
-		this.addEventListener(datasource2, 'cbn-data-query', queryHandler);
-		this.addEventListener(datasource2, 'cbn-data-available', availableHandler);
+		test('local filtering (contains mode)', function () {
+			f = fixture('datasource2', {
+				testData: JSON.parse(JSON.stringify(testData2))
+			});
+			var queryHandler = sinon.spy();
+			var availableHandler = sinon.spy();
+			
+			f.addEventListener('query', queryHandler);
+			f.addEventListener('data-available', availableHandler);
+			
+			assert.equal(f.filterMode, 'contains-ci', 'filter mode');
+			
+			assert.ok(f.query('S')); // data is available
+			assert(queryHandler.called, 'query fired');
+			assert(availableHandler.notCalled, 'data-available wasn\'t fired');
+			assert.deepEqual(f.data, testData2, 'data value');
+			assert.deepEqual(f.filteredData, test2ExpectedData, 'filtered data');
+		});
 		
-		assert.equal(datasource2.filterMode, 'contains-ci', 'filter mode');
-		
-		assert.ok(datasource2.query('S')); // data is available
-		assert(queryHandler.called ,'cbn-data-query fired');
-		
-		flush(function() {
-			assert(availableHandler.notCalled ,'cbn-data-available wasn\'t fired');
-			assert.deepEqual(datasource2.data, testData2, 'data 2');
-			assert.deepEqual(datasource2.filteredData, test2ExpectedData, 'filtered data 2');
-			done();
+		test('user data change', function() {
+			f = fixture('datasource2', {
+				testData: JSON.parse(JSON.stringify(testData2))
+			});
+			var queryHandler = sinon.spy();
+			var availableHandler = sinon.spy();
+			
+			f.addEventListener('query', queryHandler);
+			f.addEventListener('data-available', availableHandler);
+			
+			assert.deepEqual(f.data, testData2, 'initial data value');
+			f.data = testData3;
+			
+			assert(availableHandler.calledOnce, 'data-available fired');
+			assert.deepEqual(f.data, testData3, 'new data value');
 		});
 	});
 	
