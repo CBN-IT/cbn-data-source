@@ -165,20 +165,22 @@
 			
 			this.server.respond();
 			
-			assert.notOk(f.query("second"), 'second query');
-			assert.ok(this.server.requests.length == 2, 'AJAX request made');
-			assert.equal(this.server.requests[1].url, "/ajax-test.json?first=1&query=second", '2nd request URL');
-			
-			this.server.respond();
-			
 			setTimeout(function () {
-				assert.equal(dataAvailable.callCount, 2, 'data-available fired');
-				assert.deepEqual(f.filteredData, expectedData2_2, 'ajax results');
+				assert.notOk(f.query("second"), 'second query');
+				assert.ok(this.server.requests.length == 2, 'AJAX request made');
+				assert.equal(this.server.requests[1].url, "/ajax-test.json?first=1&query=second", '2nd request URL');
 				
-				// subsequent queries won't generate requests unless `autoAjax` is true
-				assert.ok(f.query(), 'data available from now on');
-				done();
-			}, 1);
+				this.server.respond();
+				
+				setTimeout(function () {
+					assert.equal(dataAvailable.callCount, 2, 'data-available fired');
+					assert.deepEqual(f.filteredData, expectedData2_2, 'ajax results');
+					
+					// subsequent queries won't generate requests unless `autoAjax` is true
+					assert.ok(f.query(), 'data available from now on');
+					done();
+				}.bind(this), 1);
+			}.bind(this), 1);
 		});
 		
 		

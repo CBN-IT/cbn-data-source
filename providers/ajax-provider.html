@@ -263,8 +263,8 @@ You can either use the `iron-ajax` directly inside the `cbn-data-source` element
 					response = event.detail.response;
 				} // else, it's the ajax.lastResponse value
 				
-				if (typeof response != 'object') {
-					console.error('invalid response received' + (response+'').substring(0, 128));
+				if (response === null || response === undefined || typeof response != 'object') {
+					console.error('invalid response received: ' + (response+'').substring(0, 128));
 					return;
 				}
 				
