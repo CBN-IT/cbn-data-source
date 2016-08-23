@@ -1,3 +1,7 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="cbn-data-filter.html">
+<link rel="import" href="providers/ajax-provider.html">
+
 <!--
 `cbn-data-source` is a non-visual element that can provide data to form inputs (such as auto-completed text, select 
 inputs etc.) or other elements.
@@ -72,15 +76,9 @@ need to configure the provider's parameters:
 </cbn-data-source>
 ```
 
-
-@group cbn-form
+@group CBN Elements
 @element cbn-data-source
 -->
-
-<!-- Imports -->
-<link rel="import" href="../polymer/polymer.html">
-<link rel="import" href="cbn-data-filter.html">
-<link rel="import" href="providers/ajax-provider.html">
 
 <dom-module id="cbn-data-source">
 	<template>
@@ -115,7 +113,7 @@ need to configure the provider's parameters:
 				 * Stores the last query requested by the consumer. 
 				 * Useful for observing when a new query is requested.
 				 * 
-				 * Note: This property is readonly. If you want to change it, use the {@link #query} method.
+				 * Note: This property is readonly. If you want to change it, use the `query` method.
 				 * 
 				 * Note2: this is set synchronously to the `query` call. In case of asynchronous providers, the data 
 				 * might not be available when the notification triggers. Listen for the `cbn-data-available` in this 
@@ -163,7 +161,7 @@ need to configure the provider's parameters:
 				
 				/**
 				 * Returns the filtered data. 
-				 * You can use {@link #query} to specify the filtering query.
+				 * You can use `query` to specify the filtering query.
 				 */
 				filteredData: {
 					type: Array,
@@ -213,7 +211,8 @@ need to configure the provider's parameters:
 			 * 
 			 * If local filtering is enabled, the 
 			 * 
-			 * If the result is true, the data is already available using the {@link #data} and {@link #filteredData} 
+			 * If the result is true, the data is already available using the `data` and
+			 * `filteredData` 
 			 * properties. Otherwise, the `data-available` event will be fired as soon as the data is available.
 			 * 
 			 * @param {String} [query]  The main query value. If undefined, the last supplied value will be used.
@@ -274,9 +273,9 @@ need to configure the provider's parameters:
 			
 			/**
 			 * Filters the current data array (i.e. without issuing a new query), retaining only the items that pass the 
-			 * query condition. The results will be stored in {@link #filteredData}.
+			 * query condition. The results will be stored in `filteredData`.
 			 * 
-			 * Also updates {@link #filterValue}.
+			 * Also updates `filterValue`.
 			 * 
 			 * @param {String} filter The value to filter by.
 			 */

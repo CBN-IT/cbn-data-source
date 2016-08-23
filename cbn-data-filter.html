@@ -1,16 +1,16 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="filters/filters.html">
+
 <!--
 `cbn-data-filter` is a non-visual component that receives a data array and outputs a filtered version of it.
 
-You can use this component by either setting `auto="true"` and specifying the {@link #data} and {@link #query} attributes and reading the 
-{@link #filteredData} output property (i.e. using data bindings) or by "statically" using the {@link #filter} method.
+You can use this component by either setting `auto="true"` and specifying the `data` and `query` 
+attributes and reading the `filteredData` output property (i.e. using data bindings) or by
+"statically" using the `filter` method.
 
-@group cbn-form
+@group CBN Elements
 @element cbn-data-filter
 -->
-
-<!-- Imports -->
-<link rel="import" href="../polymer/polymer.html">
-<link rel="import" href="filters/filters.html">
 
 <dom-module id="cbn-data-filter">
 	<template></template>
@@ -112,11 +112,15 @@ You can use this component by either setting `auto="true"` and specifying the {@
 			/**
 			 * Filters the specified data array using the specified query.
 			 * 
-			 * @param {Array}  data The input data array. If undefined, the data is fetched from {@link #data}
-			 * @param {Object|String} query The value to filter by. If undefined, the query will be taken from {@link #query}
-			 * @param {String} [filterMode] How to filter. If undefined, the query will be taken from {@link #filterMode}
-			 * @param {Boolean} [noUpdate] if true, it will stop updating {@link #filteredData} --> makes the function static
-			 * @return {Array} The output / filtered data array. The {@link #filteredData} is also updated (unless noUpdate is specified).
+			 * @param {Array}  data The input data array. If undefined, the data is fetched from `data`
+			 * @param {Object|String} query The value to filter by. If undefined, the query will be
+			 *                              taken from `query`
+			 * @param {String} [filterMode] How to filter. If undefined, the query will be taken
+			 *                              from `filterMode`
+			 * @param {Boolean} [noUpdate] if true, it will stop updating `filteredData` 
+			 *                             --> makes the function static
+			 * @return {Array} The output / filtered data array. The `filteredData` is also updated 
+			 *                 (unless noUpdate is specified).
 			 */
 			filter: function(data, query, filterMode, noUpdate) {
 				if (!data) data = this.data;
@@ -160,7 +164,7 @@ You can use this component by either setting `auto="true"` and specifying the {@
 			// Internal methods:
 			
 			/**
-			 * Called when the {@link #data} array is changed.
+			 * Called when the `data` array is changed.
 			 */
 			_dataChanged: function() {
 				if (!this.auto) return;
@@ -168,7 +172,7 @@ You can use this component by either setting `auto="true"` and specifying the {@
 			},
 			
 			/**
-			 * Called when the {@link #query} property is changed.
+			 * Called when the `query` property is changed.
 			 */
 			_queryChanged: function() {
 				if (!this.auto) return;
